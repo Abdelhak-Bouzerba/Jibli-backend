@@ -12,9 +12,9 @@ export const createRestaurant = async (req: Request, res: Response) => {
     }
 
     //Call service to create new restaurant
-    const newRestaurant = await restaurantService.createRestaurant(req.body);
+    const { token , newRestaurant} = await restaurantService.createRestaurant(req.body);
 
     //send response
-    res.status(201).send({ restaurant: newRestaurant, message: "Restaurant created successfully" });
+    res.status(201).send({ restaurant: newRestaurant, token, message: "Restaurant created successfully" });
 
 }; 

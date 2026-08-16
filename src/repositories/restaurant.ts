@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IRestaurant } from "../types/restaurant";
+import { IRestaurant } from "../types";
 import Restaurant from "../models/restaurant";
 
 
@@ -13,7 +13,7 @@ const createNewRestaurant = async (restaurantData: IRestaurant) => {
     }
 };
 
-//check if restaurant exists
+//check if restaurant exists by Id
 const checkRestaurantExists = async (restaurantPhone: string) => { 
     try { 
         const rs = await Restaurant.findOne({ phone: restaurantPhone });
@@ -27,4 +27,18 @@ const checkRestaurantExists = async (restaurantPhone: string) => {
 };
 
 
-export default { createNewRestaurant, checkRestaurantExists };
+//check if restaurant exists by phone
+const checkRestaurantExistsById = async (restaurantId: string) => { 
+    try { 
+        const rs = await Restaurant.findOne({ _id: restaurantId });
+        if(rs) {
+            return true;
+        }
+        return false;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+export default { createNewRestaurant, checkRestaurantExistsById, checkRestaurantExists };

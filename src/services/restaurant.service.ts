@@ -1,11 +1,12 @@
 import restaurantRepository from "../repositories/restaurant";
-import { IRestaurant } from "../types/restaurant";
+import { IRestaurant } from "../types";
 import { createRestaurantSchema } from "../utils/zod";
+import { generateJWTtoken } from "../utils/generateJWTtoken";
 
 
 
 //Create new Restaurant service
-const createRestaurant = async (restaurantData: IRestaurant) => { 
+const createRestaurant = async (restaurantData: IRestaurant) => {
 
     //Check if restaurant already exists
     const existingRestaurant = await restaurantRepository.checkRestaurantExists(restaurantData.phone);
@@ -21,9 +22,13 @@ const createRestaurant = async (restaurantData: IRestaurant) => {
 
     //Create new restaurant
     const newRestaurant = await restaurantRepository.createNewRestaurant(restaurantData);
-    return newRestaurant;
 
-}
+    //generate JWT token 
+    const token = generateJWTtoken({ id: newRestaurant.id, role: newRestaurant.role });
+
+    return { newRestaurant, token };
+
+};
 
 
 export default { createRestaurant };
