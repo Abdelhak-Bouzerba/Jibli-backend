@@ -1,7 +1,9 @@
+import Product from "../models/product";
 import productRepository from "../repositories/product";
 import restaurantRepository from "../repositories/restaurant";
 import { IProduct } from "../types/index";
 import { createProductSchema } from "../utils/zod";
+import { Types } from "mongoose";
 
 
 //Create a new product service
@@ -31,7 +33,79 @@ const createProduct = async (productData: IProduct) => {
 
 };
 
+//Get all products service
+const getAllProducts = async () => {
+
+    //Get all products
+    const products = await productRepository.getAllProducts();
+    return products;
+
+};
+
+//Get single product service
+const getProductById = async (productId: string) => {
+
+    //check if the productId is a valid ObjectId
+    if (!Types.ObjectId.isValid(productId)) {
+        throw new Error(`Invalid product ID.`);
+    }
+
+    //Get the product
+    const product = await productRepository.getProductById(productId);
+    if (!product) {
+        throw new Error(`Product does not exist.`);
+    }
+
+    return product;
+
+};
+
+//update product service
+const updateProduct = async (productId: string, data: IProduct) => {
+
+    //validate the updated data
+    // const parseResult = createProductSchema.safeParse(data);
+    //  if (!parseResult.success) {
+    //    throw new Error(`Validation error: ${parseResult.error.message}`);
+    //  }
+
+    //check if restaurant is exists
+    const existingRestaurant = await restaurantRepository.checkRestaurantExistsById(data.restaurantId as unknown as string);
+    if (!existingRestaurant) {
+        throw new Error("Restaurant does not exists");
+    }
+
+    //check if product is exists
+    const existingProduct = await productRepository.getProductById(productId);
+    if (!existingProduct) {
+        throw new Error("product does not exists");
+    }
+
+    //update product
+    const updatedProduct = await productRepository.updateProduct(productId, data);
+    return updatedProduct;
+
+};
+
+//Delete a product service
+const deleteProduct = async (productId: string) => {
+
+    //check if the product exists
+    const productExists = await productRepository.getProductById(productId);
+    if (!productExists) {
+        throw new Error(`Product does not exist.`);
+    }
+
+    //Delete the product
+    await productRepository.deleteProduct(productId);
+
+};
+
 
 export default {
     createProduct,
+    getAllProducts,
+    getProductById,
+    updateProduct,
+    deleteProduct,
 }

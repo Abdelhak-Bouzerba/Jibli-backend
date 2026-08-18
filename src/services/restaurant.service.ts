@@ -15,9 +15,9 @@ const createRestaurant = async (restaurantData: IRestaurant) => {
     }
 
     //validate restaurant data through zod schema
-    const result = createRestaurantSchema.safeParse(restaurantData);
-    if (!result.success) {
-        throw new Error(`Validation error: ${result.error.message}`);
+    const parseResult = createRestaurantSchema.safeParse(restaurantData);
+    if (!parseResult.success) {
+        throw new Error(`Validation error: ${parseResult.error.message}`);
     }
 
     //Create new restaurant

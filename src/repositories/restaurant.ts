@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import { Types } from "mongoose";
 import { IRestaurant } from "../types";
 import Restaurant from "../models/restaurant";
 
@@ -26,15 +26,11 @@ const checkRestaurantExists = async (restaurantPhone: string) => {
     }
 };
 
-
 //check if restaurant exists by phone
 const checkRestaurantExistsById = async (restaurantId: string) => { 
     try { 
-        const rs = await Restaurant.findOne({ _id: restaurantId });
-        if(rs) {
-            return true;
-        }
-        return false;
+        const rs = await Restaurant.exists({ _id: restaurantId });
+        return rs;
     } catch (error) {
         throw error;
     }
