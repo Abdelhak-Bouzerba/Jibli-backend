@@ -1,6 +1,21 @@
-import JWT from "jsonwebtoken";
+import JWT, { JwtPayload} from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
+declare global {
+  namespace Express {
+    interface Request {
+        user?: {
+            id: string;
+            role: string;
+      }
+    }
+  }
+}
+
+interface jwtPayload { 
+    id: string;
+    role: string;
+}
 
 //Middleware to validate JWT token
 export const validateJWT = (req: Request, res: Response, next: NextFunction) => {
@@ -13,8 +28,15 @@ export const validateJWT = (req: Request, res: Response, next: NextFunction) => 
     }
 
     //verify the token
-    const decoded = JWT.verify(token, process.env.JWT_SECRET as string);
-    (req as any).user = decoded;
+    const decoded = JWT.verify(
+      token,
+      process.env.JWT_SECRET as string,
+    ) as jwtPayload;
+    if(!decoded || typeof decoded === "string") {
+        res.status(401).json({ message: "Unauthorized: Invalid token" });
+        return
+    }       
+    req.user = decoded;
     next();
     
 };

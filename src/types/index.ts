@@ -1,10 +1,17 @@
 import { Document , Types} from "mongoose";
 
+type restaurantTags = 'fast-food' | 'restaurant' | 'traditional' | 'healthy' | 'pizzeria' | 'desserts' | 'barbcue' | 'sandwiches';
 export interface IRestaurant extends Document {
   name: string;
-  logoUrl: string;
+  logo: {
+    url: string;
+    publicId: string;
+  };
   phone: string;
+  email: string;
   isOpen: boolean;
+  isActive: boolean;
+  tags: restaurantTags[];
   workingHours: {
     open: string; // e.g., "09:00"
     close: string; // e.g., "21:00"
@@ -21,7 +28,8 @@ export interface IRestaurant extends Document {
   role: 'restaurant';
   createdAt: Date;
   updatedAt: Date;
-}
+
+};
 
 export interface IProduct extends Document {
   restaurantId: Types.ObjectId;  // Reference to the restaurant
@@ -29,9 +37,12 @@ export interface IProduct extends Document {
   category: 'sandwich' |'burger' | 'pizza' | 'taco' | 'dishes' | 'dessert' | 'drinks' | 'other';
   price: number;
   preparationTime: number; //in minutes
-  imageUrl: string;
+  image: {
+    url: string;
+    publicId: string;
+  };
   description: string;
   isAvailable: boolean;
   createdAt: Date;
   updatedAt: Date;
-}
+};

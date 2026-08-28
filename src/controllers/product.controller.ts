@@ -1,6 +1,9 @@
 import productService from "../services/product.service";
 import { Request, Response } from "express";
 import { IProduct } from "../types";
+import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
+import productRepository from "../repositories/product";
+
 
 //Create a new product controller
 export const createProduct = async (req: Request, res: Response) => {
@@ -8,7 +11,7 @@ export const createProduct = async (req: Request, res: Response) => {
   if (!req.body || Object.keys(req.body).length === 0) {
     res.status(400).json({ message: "Product data is required" });
     return;
-  }
+  }  
 
   // Check if image was uploaded
   if (!req.file) {
@@ -16,9 +19,10 @@ export const createProduct = async (req: Request, res: Response) => {
     return;
   }
 
+  const result = await uploadToCloudinary(req.file.buffer, "jibli/products");
+
   // Extract product data from request body
   const data = req.body;
-  const productImage = req.file;
 
   const isAvailable =
     data.isAvailable === "true"
@@ -30,7 +34,10 @@ export const createProduct = async (req: Request, res: Response) => {
   //prepare productData object
   const productData = {
     ...data,
-    imageUrl: `${req.protocol}://${req.get("host")}/uploads/products/${productImage.filename}`,
+    image: {
+      url: result.secure_url,
+      publicId: result.public_id
+    },
     price: Number(data.price),
     preparationTime: Number(data.preparationTime),
     isAvailable,
@@ -92,15 +99,26 @@ export const updateProduct = async (req: Request, res: Response) => {
 
   // Only update image if a new image was uploaded
   if (req.file) {
-    data.imageUrl = req.file.filename
-      ? `${req.protocol}://${req.get("host")}/uploads/products/${req.file.filename}`
-      : undefined;
+
+    //delete the old image from cloudinary
+    const existingProduct = await productRepository.getProductById(productId);
+    if(existingProduct?.image && existingProduct.image.publicId) {
+      const publicId = existingProduct.image.publicId;
+      await deleteFromCloudinary(publicId);
+    }
+
+    //upload the new image to cloudinary
+    const result = await uploadToCloudinary(req.file.buffer, "jibli/products");
+    data.image = {
+      url: result.secure_url,
+      publicId: result.public_id
+    };
   }
 
   //prepare productData object
   const productData: IProduct = {
     ...data,
-    imageUrl: data.imageUrl,
+    restaurantId: req.user?.id as string,
     price: Number(data.price),
     preparationTime: Number(data.preparationTime),
     isAvailable,

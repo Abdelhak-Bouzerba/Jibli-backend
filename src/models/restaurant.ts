@@ -4,8 +4,14 @@ import { IRestaurant } from "../types/index.js";
 const restaurantSchema = new mongoose.Schema<IRestaurant>({
     name: { type: String, required: true, index: true },
     phone: { type: String, required: true },
-    logoUrl: { type: String, required: false },
+    logo: {
+        url: { type: String, required: false },
+        publicId: { type: String, required: false }
+    },
     isOpen: { type: Boolean, required: true, default: true },
+    isActive: { type: Boolean, required: true, default: true },
+    tags: { type: [String], enum: ['fast-food', 'restaurant', 'traditional', 'healthy', 'pizzeria', 'desserts', 'barbcue', 'sandwiches'], required: true },
+    email: { type: String, required: false },
     workingHours: {
         open: { type: String, required: true },
         close: { type: String, required: true },

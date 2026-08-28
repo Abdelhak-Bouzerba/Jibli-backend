@@ -1,40 +1,78 @@
 import { Types } from "mongoose";
 import { IRestaurant } from "../types";
 import Restaurant from "../models/restaurant";
+import Product from "../models/product";
 
+//Login restaurant
+const restaurantLogin = async (phone: string) => {
+    const restaurant = await Restaurant.findOne({ phone });
+    return restaurant;
+};
 
 //create new Restaurant operation
 const createNewRestaurant = async (restaurantData: IRestaurant) => {
-    try {
-        const restaurant = await Restaurant.create(restaurantData);
-        return restaurant;
-    } catch (error) {
-        throw error;
-    }
+    const restaurant = await Restaurant.create(restaurantData);
+    return restaurant;
 };
 
 //check if restaurant exists by Id
-const checkRestaurantExists = async (restaurantPhone: string) => { 
-    try { 
-        const rs = await Restaurant.findOne({ phone: restaurantPhone });
-        if(rs) {
-            return true;
-        }
-        return false;
-    } catch (error) {
-        throw error;
+const checkRestaurantExists = async (restaurantPhone: string) => {
+    const rs = await Restaurant.findOne({ phone: restaurantPhone });
+    if (rs) {
+        return true;
     }
+    return false;
+};
+
+//Get restaurant by Id
+const getRestaurantById = async (restaurantId: string) => {
+    const rs = await Restaurant.findById(restaurantId).lean();
+    return rs;
 };
 
 //check if restaurant exists by phone
-const checkRestaurantExistsById = async (restaurantId: string) => { 
-    try { 
-        const rs = await Restaurant.exists({ _id: restaurantId });
-        return rs;
-    } catch (error) {
-        throw error;
-    }
+const checkRestaurantExistsById = async (restaurantId: string) => {
+    const rs = await Restaurant.exists({ _id: restaurantId });
+    return rs;
 };
 
+//Get Restaurant products by category
+const getProducts = async (restaurantId: string, category: string) => {
+    const products = await Product.find({ restaurantId, category } as any)
+        .select("-restaurantId -__v -createdAt -updatedAt")
+        .lean();
+    return products;
+};
 
-export default { createNewRestaurant, checkRestaurantExistsById, checkRestaurantExists };
+//Update restaurant status
+const manageRestaurantStatus = async (restaurantId: string,status: boolean) => {
+    const rs = await Restaurant.findById(restaurantId);
+    if (!rs) {
+        throw new Error("Restaurant not found");
+    }
+
+    rs.isActive = status;
+    await rs.save();
+    return rs;
+};
+
+//Update restaurant settings
+const updateRestaurantSettings = async (restaurantId: string,settings: Partial<IRestaurant>,) => {
+    const rs = await Restaurant.findByIdAndUpdate(
+        restaurantId,
+        { $set: settings },
+        { returnDocument: "after", runValidators: true },
+    ).lean();
+    return rs;
+};
+
+export default {
+    createNewRestaurant,
+    getRestaurantById,
+    checkRestaurantExistsById,
+    checkRestaurantExists,
+    getProducts,
+    manageRestaurantStatus,
+    updateRestaurantSettings,
+    restaurantLogin,
+};

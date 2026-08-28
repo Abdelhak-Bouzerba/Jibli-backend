@@ -8,7 +8,10 @@ const productSchema = new mongoose.Schema<IProduct>({
     category: { type: String, enum: ['sandwich', 'burger', 'pizza', 'taco', 'dishes', 'dessert', 'drinks', 'other'], required: true },
     price: { type: Number, required: true },
     preparationTime: { type: Number, required: true },
-    imageUrl: { type: String, required: false },
+    image: {
+        url: { type: String, required: false },
+        publicId: { type: String, required: false }
+    },
     description: { type: String, required: false },
     isAvailable: { type: Boolean, required: false , default: true},
 }, {

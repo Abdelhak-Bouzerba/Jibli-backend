@@ -1,16 +1,16 @@
-import Product from "../models/product";
 import productRepository from "../repositories/product";
 import restaurantRepository from "../repositories/restaurant";
 import { IProduct } from "../types/index";
-import { createProductSchema } from "../utils/zod";
+import { createProductSchema } from "../validators/product.validators";
 import { Types } from "mongoose";
+import { deleteFromCloudinary } from "../utils/cloudinary";
 
 
 //Create a new product service
 const createProduct = async (productData: IProduct) => {
 
     //check if the product already exists
-    const productExists = await productRepository.checkProductExists(productData.restaurantId, productData.name);
+    const productExists = await productRepository.checkProductExists(productData.name, productData.restaurantId);
     if (productExists) {
         throw new Error(`${productData.name} already exists.`);
     }
@@ -83,6 +83,13 @@ const updateProduct = async (productId: string, data: IProduct) => {
 
     //update product
     const updatedProduct = await productRepository.updateProduct(productId, data);
+
+    //delete the old image from cloudinary if a new image is provided
+    if (data.image && existingProduct.image && existingProduct.image.publicId) {
+        const publicId = existingProduct.image.publicId;
+        await deleteFromCloudinary(publicId);
+    }
+
     return updatedProduct;
 
 };
