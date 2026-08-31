@@ -93,47 +93,61 @@ export const manageRestaurantStatus = async (req: Request, res: Response) => {
 //Update restaurant settings controller
 export const updateRestaurantSettings = async (req: Request, res: Response) => {
   const restaurantId = req.params.restaurantId as string;
-  const data = req.body;
 
-  //check if restaurantId and settings are provided
-  if (!restaurantId || !data) {
-    res.status(400).json({ message: "restaurantId and settings are required" });
+  if (!restaurantId) {
+    res.status(400).json({
+      message: "restaurantId is required",
+    });
     return;
   }
 
-  //check if a new image is provided and upload it to cloudinary
-  if (req.file) {
-    //Delete the old image from cloudinary
-    const existingRestaurant = await restaurantRepository.getRestaurantById(restaurantId);
-    if (existingRestaurant?.logo && existingRestaurant.logo.publicId) {
-      const publicId = existingRestaurant.logo.publicId;
-      await deleteFromCloudinary(publicId);
-    }
+  const files = req.files as
+    | {
+        [fieldname: string]: Express.Multer.File[];
+      }
+    | undefined;
 
-    //Upload the new image to cloudinary
-    const result = await uploadToCloudinary(req.file?.buffer, "jibli/restaurants");
-    
-    //Add the new image details to the data object
-    data.logo = {
-      url: result.secure_url,
-      publicId: result.public_id,
-    }
-  }
+  const logo = files?.logo?.[0];
+  const coverPhoto = files?.coverPhoto?.[0];
 
-  //prepare the updated data (settings)
-  const settings = {
-    ...data,
-  };
-
-  //Call service to update restaurant settings
   const updatedRestaurant = await restaurantService.updateRestaurantSettings(
     restaurantId,
-    settings,
+    req.body,
+    logo,
+    coverPhoto,
   );
 
-  //send response
   res.status(200).json({
     restaurant: updatedRestaurant,
     message: "Restaurant settings updated successfully",
   });
-};;
+};
+
+//Get all restaurants controller
+export const getAllRestaurants = async (req: Request, res: Response) => {
+
+  //Call service to get all restaurants
+  const restaurants = await restaurantService.getAllRestaurants();
+
+  //send response
+  res.status(200).json({ restaurants, message: "Restaurants fetched successfully" });
+
+};
+
+//Get single restaurant controller
+export const getSingleRestaurant = async (req: Request, res: Response) => {
+  const restaurantId = req.params.restaurantId as string;
+
+  if (!restaurantId) {
+    res.status(400).json({
+      message: "restaurantId is required",
+    });
+    return;
+  }
+
+  //Call service to get single restaurant
+  const restaurant = await restaurantService.getSingleRestaurant(restaurantId);
+
+  //send response
+  res.status(200).json({ restaurant, message: "Restaurant fetched successfully" });
+};

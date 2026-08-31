@@ -6,6 +6,8 @@ import {
   manageRestaurantStatus,
   updateRestaurantSettings,
   restaurantLogin,
+  getAllRestaurants,
+  getSingleRestaurant,
 } from "../../controllers/restaurant.controller";
 import { validateJWT } from "../../middlewares/validateJWT";
 import requireRole from "../../middlewares/requireRole";
@@ -41,6 +43,17 @@ v1router.put("/:restaurantId/status", validateJWT, requireRole("restaurant"),aut
 //@desc Update restaurant settings
 //@route PUT /api/v1/restaurant/:restaurantId/settings
 //access Private
-v1router.put("/:restaurantId/settings", validateJWT, requireRole("restaurant"), authorizeRestaurant, upload.single("image"), asyncHandler(updateRestaurantSettings));
+v1router.put("/:restaurantId/settings", validateJWT, requireRole("restaurant"), authorizeRestaurant, upload.fields([{ name: "logo", maxCount: 1 }, { name: "coverPhoto", maxCount: 1 }]), asyncHandler(updateRestaurantSettings));
 
+
+//@desc Get all restaurants
+//@route GET /api/v1/restaurant/all
+//access Public
+v1router.get("/all", asyncHandler(getAllRestaurants));
+
+
+//@desc Get single restaurant
+//@route GET /api/v1/restaurant/:restaurantId
+//access Public
+v1router.get("/:restaurantId", asyncHandler(getSingleRestaurant));
 export default v1router;

@@ -1,5 +1,4 @@
 import zod from "zod";
-import mongoose from "mongoose";
 
 
 //create new restaurant schema
@@ -17,12 +16,43 @@ export const createRestaurantSchema = zod.object({
     isActive: zod.boolean().optional().default(true),
     tags: zod.array(zod.enum(['fast-food', 'restaurant', 'traditional', 'healthy', 'pizzeria', 'desserts', 'barbcue', 'sandwiches'])).min(1, "At least one tag is required").max(4),
     email: zod.string().email("Invalid email address").optional(),
-    workingHours: zod.object({
-        open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
-        close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-    }),
+    workingDays: zod.object({
+        sunday: zod.object({
+            open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
+            close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
+        }),
+        monday: zod.object({
+            open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
+            close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
+        }),
+        tuesday: zod.object({
+            open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
+            close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
+        }),
+        wednesday: zod.object({
+            open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
+            close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
+        }),
+        thursday: zod.object({
+            open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
+            close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
+        }),
+        friday: zod.object({
+            open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
+            close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
+        }),
+        saturday: zod.object({
+            open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
+            close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
+        }),
+    }).optional(),
+    coverPhoto: zod.object({
+        url: zod.string().url("Invalid URL"),
+        publicId: zod.string().optional()
+    }).optional(),
+    description: zod.string().max(500, "Description must be at most 500 characters long").optional(),
     location: zod.object({
-        address: zod.string().min(5, "Address must be at least 5 characters long"),
+        city: zod.string().min(5, "Address must be at least 5 characters long"),
         coordinates: zod.object({
             type: zod.literal("Point"),
             coordinates: zod.array(zod.number()).max(2).refine((coords) => coords.length === 2, {

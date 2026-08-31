@@ -6,7 +6,10 @@ const productSchema = new mongoose.Schema<IProduct>({
     restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", required: true },
     name: { type: String, required: true },
     category: { type: String, enum: ['sandwich', 'burger', 'pizza', 'taco', 'dishes', 'dessert', 'drinks', 'other'], required: true },
-    price: { type: Number, required: true },
+    variants: [{
+        size: { type: String, required: true },
+        price: { type: Number, required: true }
+    }],
     preparationTime: { type: Number, required: true },
     image: {
         url: { type: String, required: false },

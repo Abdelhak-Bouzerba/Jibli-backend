@@ -24,15 +24,25 @@ const checkRestaurantExists = async (restaurantPhone: string) => {
     return false;
 };
 
+//Get all restaurants
+const getAllRestaurants = async () => {
+    const restaurants = await Restaurant.find()
+    .select("-phone -ratingCount -createdAt -updatedAt -role")
+    .lean();
+    return restaurants;
+};
+
 //Get restaurant by Id
 const getRestaurantById = async (restaurantId: string) => {
-    const rs = await Restaurant.findById(restaurantId).lean();
+    const rs = await Restaurant.findById(restaurantId)
+    .select("-phone -ratingCount -createdAt -updatedAt -role")
+    .lean();
     return rs;
 };
 
 //check if restaurant exists by phone
 const checkRestaurantExistsById = async (restaurantId: string) => {
-    const rs = await Restaurant.exists({ _id: restaurantId });
+    const rs = await Restaurant.findById(restaurantId);
     return rs;
 };
 
@@ -67,12 +77,13 @@ const updateRestaurantSettings = async (restaurantId: string,settings: Partial<I
 };
 
 export default {
-    createNewRestaurant,
-    getRestaurantById,
-    checkRestaurantExistsById,
-    checkRestaurantExists,
-    getProducts,
-    manageRestaurantStatus,
-    updateRestaurantSettings,
-    restaurantLogin,
+  createNewRestaurant,
+  getRestaurantById,
+  checkRestaurantExistsById,
+  checkRestaurantExists,
+  getProducts,
+  manageRestaurantStatus,
+  updateRestaurantSettings,
+  restaurantLogin,
+  getAllRestaurants,
 };

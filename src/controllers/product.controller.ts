@@ -31,9 +31,12 @@ export const createProduct = async (req: Request, res: Response) => {
         ? false
         : undefined;
 
+  const variant = JSON.parse(data.variants);
+
   //prepare productData object
   const productData = {
     ...data,
+    variants: variant,
     image: {
       url: result.secure_url,
       publicId: result.public_id

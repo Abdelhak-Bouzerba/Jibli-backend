@@ -3,7 +3,12 @@ import { Document , Types} from "mongoose";
 type restaurantTags = 'fast-food' | 'restaurant' | 'traditional' | 'healthy' | 'pizzeria' | 'desserts' | 'barbcue' | 'sandwiches';
 export interface IRestaurant extends Document {
   name: string;
+  description: string;
   logo: {
+    url: string;
+    publicId: string;
+  };
+  coverPhoto: {
     url: string;
     publicId: string;
   };
@@ -12,14 +17,19 @@ export interface IRestaurant extends Document {
   isOpen: boolean;
   isActive: boolean;
   tags: restaurantTags[];
-  workingHours: {
-    open: string; // e.g., "09:00"
-    close: string; // e.g., "21:00"
-  };
+  workingDays: {
+    sunday: { open: string; close: string };
+    monday: { open: string; close: string };
+    tuesday: { open: string; close: string };
+    wednesday: { open: string; close: string };
+    thursday: { open: string; close: string };
+    friday: { open: string; close: string };
+    saturday: { open: string; close: string };
+  },
   rating: number;
   ratingCount: number;
   location: {
-    address: string;
+    city: string;
     coordinates: {
       type: "Point";
       coordinates: [number, number]; // [lng, lat]
@@ -35,7 +45,9 @@ export interface IProduct extends Document {
   restaurantId: Types.ObjectId;  // Reference to the restaurant
   name: string;
   category: 'sandwich' |'burger' | 'pizza' | 'taco' | 'dishes' | 'dessert' | 'drinks' | 'other';
-  price: number;
+  variants: [
+    { size: string, price: number }
+  ];
   preparationTime: number; //in minutes
   image: {
     url: string;
