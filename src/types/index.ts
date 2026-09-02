@@ -1,6 +1,14 @@
-import { Document , Types} from "mongoose";
+import { Document, Types } from "mongoose";
 
-type restaurantTags = 'fast-food' | 'restaurant' | 'traditional' | 'healthy' | 'pizzeria' | 'desserts' | 'barbcue' | 'sandwiches';
+type restaurantTags =
+  | "fast-food"
+  | "restaurant"
+  | "traditional"
+  | "healthy"
+  | "pizzeria"
+  | "desserts"
+  | "barbcue"
+  | "sandwiches";
 export interface IRestaurant extends Document {
   name: string;
   description: string;
@@ -25,7 +33,7 @@ export interface IRestaurant extends Document {
     thursday: { open: string; close: string };
     friday: { open: string; close: string };
     saturday: { open: string; close: string };
-  },
+  };
   rating: number;
   ratingCount: number;
   location: {
@@ -35,19 +43,24 @@ export interface IRestaurant extends Document {
       coordinates: [number, number]; // [lng, lat]
     };
   };
-  role: 'restaurant';
+  role: "restaurant";
   createdAt: Date;
   updatedAt: Date;
-
-};
+}
 
 export interface IProduct extends Document {
-  restaurantId: Types.ObjectId;  // Reference to the restaurant
+  restaurantId: Types.ObjectId; // Reference to the restaurant
   name: string;
-  category: 'sandwich' |'burger' | 'pizza' | 'taco' | 'dishes' | 'dessert' | 'drinks' | 'other';
-  variants: [
-    { size: string, price: number }
-  ];
+  category:
+    | "sandwich"
+    | "burger"
+    | "pizza"
+    | "taco"
+    | "dishes"
+    | "dessert"
+    | "drinks"
+    | "other";
+  variants: [{ size: string; price: number }];
   preparationTime: number; //in minutes
   image: {
     url: string;
@@ -57,4 +70,44 @@ export interface IProduct extends Document {
   isAvailable: boolean;
   createdAt: Date;
   updatedAt: Date;
-};
+}
+
+export interface ICustomer extends Document {
+  phone: string;
+  fullName: string;
+  email?: string;
+  role: "customer";
+  savedRestaurants?: Types.ObjectId[]; // Array of restaurant IDs
+  location: {
+    city: string;
+    coordinates: {
+      type: "Point";
+      coordinates: [number, number]; // [lng, lat]
+    };
+  };
+  savedAddresses?: {
+    label: string;
+    city: string;
+    coordinates: {
+      type: "Point";
+      coordinates: [number, number]; // [lng, lat]
+    };
+  }[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ICart extends Document {
+  customerId: Types.ObjectId; // Reference to the customer
+  items: {
+    productId: Types.ObjectId | string; // Reference to the product
+    variant: {
+      size: string;
+      price: number;
+    };
+    quantity: number;
+  }[];
+  totalPrice: number;
+  createdAt: Date;
+  updatedAt: Date;
+}

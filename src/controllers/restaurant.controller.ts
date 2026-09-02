@@ -125,13 +125,13 @@ export const updateRestaurantSettings = async (req: Request, res: Response) => {
 
 //Get all restaurants controller
 export const getAllRestaurants = async (req: Request, res: Response) => {
-
   //Call service to get all restaurants
   const restaurants = await restaurantService.getAllRestaurants();
 
   //send response
-  res.status(200).json({ restaurants, message: "Restaurants fetched successfully" });
-
+  res
+    .status(200)
+    .json({ restaurants, message: "Restaurants fetched successfully" });
 };
 
 //Get single restaurant controller
@@ -149,5 +149,29 @@ export const getSingleRestaurant = async (req: Request, res: Response) => {
   const restaurant = await restaurantService.getSingleRestaurant(restaurantId);
 
   //send response
-  res.status(200).json({ restaurant, message: "Restaurant fetched successfully" });
+  res
+    .status(200)
+    .json({ restaurant, message: "Restaurant fetched successfully" });
+};
+
+//Search restaurant by name controller
+export const searchRestaurantByName = async (req: Request, res: Response) => {
+  const name = req.query.name as string;
+
+  //check if name is provided
+  if (!name) {
+    res.status(400).json({
+      message: "name is required",
+    });
+    return;
+  }
+
+  //Call service to search restaurant by name
+  const restaurants = await restaurantService.searchRestaurantByName(name);
+
+  //send response
+  res.status(200).json({
+    restaurants,
+    message: "Restaurants fetched successfully",
+  });
 };

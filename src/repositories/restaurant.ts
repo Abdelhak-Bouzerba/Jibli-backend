@@ -76,6 +76,18 @@ const updateRestaurantSettings = async (restaurantId: string,settings: Partial<I
     return rs;
 };
 
+//Search for restaurnat by name
+const searchRestaurantByName = async (name: string) => { 
+    const restaurants = await Restaurant.find(
+        {
+            name: { $regex: new RegExp(name, "i") },
+        }
+    ).select("-phone -ratingCount -createdAt -updatedAt -role")
+    .lean();
+
+    return restaurants;
+};
+
 export default {
   createNewRestaurant,
   getRestaurantById,
@@ -86,4 +98,5 @@ export default {
   updateRestaurantSettings,
   restaurantLogin,
   getAllRestaurants,
+  searchRestaurantByName,
 };

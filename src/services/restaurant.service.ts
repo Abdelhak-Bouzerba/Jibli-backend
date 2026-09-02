@@ -177,6 +177,12 @@ const getSingleRestaurant = async(restaurantId: string) => {
     return restaurant;
 };
 
+//Search restaurant by name service
+const searchRestaurantByName = async (name: string) => {
+  const restaurants = await restaurantRepository.searchRestaurantByName(name);
+  return restaurants;
+};
+
 export default {
   createRestaurant,
   getProductsByCategory,
@@ -185,4 +191,5 @@ export default {
   restaurantLogin,
   getAllRestaurants,
   getSingleRestaurant,
+  searchRestaurantByName,
 };

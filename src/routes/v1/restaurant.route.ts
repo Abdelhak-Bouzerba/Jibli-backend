@@ -8,6 +8,7 @@ import {
   restaurantLogin,
   getAllRestaurants,
   getSingleRestaurant,
+  searchRestaurantByName,
 } from "../../controllers/restaurant.controller";
 import { validateJWT } from "../../middlewares/validateJWT";
 import requireRole from "../../middlewares/requireRole";
@@ -52,8 +53,16 @@ v1router.put("/:restaurantId/settings", validateJWT, requireRole("restaurant"), 
 v1router.get("/all", asyncHandler(getAllRestaurants));
 
 
+//@desc Search restaurant by name
+//@route GET /api/v1/restaurant/search?name=
+//access Public
+v1router.get("/search", asyncHandler(searchRestaurantByName));
+
+
 //@desc Get single restaurant
 //@route GET /api/v1/restaurant/:restaurantId
 //access Public
 v1router.get("/:restaurantId", asyncHandler(getSingleRestaurant));
+
+
 export default v1router;
