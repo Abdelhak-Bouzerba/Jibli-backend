@@ -28,8 +28,12 @@ const addToCart = async (customerId: string, productId: string, quantity: number
         throw new Error("Cart does not exist for this customer");
     }
 
+    //calculate total price & unit price for the item
+    const unitPrice = variant.price;
+    const totalPrice = unitPrice * quantity;
+
     //add new item to cart
-    cart.items.push({ productId, quantity, variant });
+    cart.items.push({ productId, quantity, variant , unitPrice, totalPrice});
 
     //update totalPrice
     cart.totalPrice += quantity * variant.price; 

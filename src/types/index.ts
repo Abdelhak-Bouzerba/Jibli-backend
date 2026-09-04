@@ -97,17 +97,62 @@ export interface ICustomer extends Document {
   updatedAt: Date;
 }
 
+interface IItem { 
+  productId: Types.ObjectId | string; // Reference to the product
+  variant: {
+    size: string;
+    price: number;
+  };
+  quantity: number;
+  unitPrice: number; // Price of a single unit of the product variant
+  totalPrice: number; // Total price for this item (unitPrice * quantity)
+}
+
 export interface ICart extends Document {
   customerId: Types.ObjectId; // Reference to the customer
-  items: {
-    productId: Types.ObjectId | string; // Reference to the product
-    variant: {
-      size: string;
-      price: number;
-    };
-    quantity: number;
-  }[];
+  items: IItem[];
   totalPrice: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+type Status = "pending" | "accepted" | "preparing" | "ready-to-pickup" | "out-for-delivery" |"at-door"| "delivered" | "cancelled";
+export interface IOrder extends Document {
+  orderNumber: string;
+  customerId: Types.ObjectId; // Reference to the customer
+  restaurantId: Types.ObjectId; // Reference to the restaurant
+  riderId: Types.ObjectId | null; // Reference to the rider, can be null if not assigned
+  items: IItem[];
+  subtotal: number;
+  totalPrice: number; // Total price including delivery fee
+  status: Status;
+  deliveryDetails: {
+    fee: number;
+    type: "delivery" | "pickup"; 
+    location?: {
+      city: string;
+      coordinates: {
+        type: "Point";
+        coordinates: [number, number]; // [lng, lat]
+      };
+    };
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateOrderData {
+  customerId: Types.ObjectId;
+  restaurantId: Types.ObjectId | string;
+
+  deliveryDetails: {
+    type: "delivery" | "pickup";
+    location?: {
+      city: string;
+      coordinates: {
+        type: "Point";
+        coordinates: [number, number]; // [lng, lat]
+      };
+    };
+  };
 }

@@ -7,7 +7,9 @@ const itemSchema = new mongoose.Schema({
     variant: {
         size: { type: String, required: true },
         price: { type: Number, required: true }
-    }
+    },
+    unitPrice: { type: Number, required: true },
+    totalPrice: { type: Number, required: true },
 });
 
 const cartSchema = new mongoose.Schema<ICart>({
