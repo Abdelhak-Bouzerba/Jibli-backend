@@ -1,5 +1,5 @@
 import restaurantRepository from "../repositories/restaurant";
-import { IRestaurant } from "../types";
+import { IRestaurant, Status } from "../types";
 import { createRestaurantSchema } from "../validators/restaurant.validator";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
@@ -183,6 +183,12 @@ const searchRestaurantByName = async (name: string) => {
   return restaurants;
 };
 
+//order management service
+const manageOrderStatus = async (orderId: string, restaurantId: string, status: Status, preparationTime?: number) => {
+  const updatedOrder = await restaurantRepository.manageOrderStatus(orderId, restaurantId, status, preparationTime);
+  return updatedOrder;
+};
+
 export default {
   createRestaurant,
   getProductsByCategory,
@@ -192,4 +198,5 @@ export default {
   getAllRestaurants,
   getSingleRestaurant,
   searchRestaurantByName,
+  manageOrderStatus,
 };

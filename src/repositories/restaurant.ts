@@ -1,7 +1,7 @@
-import { Types } from "mongoose";
-import { IRestaurant } from "../types";
+import { IRestaurant , Status } from "../types";
 import Restaurant from "../models/restaurant";
 import Product from "../models/product";
+import Order from "../models/order";
 
 //Login restaurant
 const restaurantLogin = async (phone: string) => {
@@ -88,6 +88,30 @@ const searchRestaurantByName = async (name: string) => {
     return restaurants;
 };
 
+//check order belongs to restaurant
+const checkOrderBelongsToRestaurant = async (orderId: string, restaurantId: string) => {
+    const order = await Order.exists({ _id: orderId, restaurantId });
+    return order;
+};
+
+//Manage order status
+const manageOrderStatus = async (orderId: string,restaurantId: string, status: Status, preparationTime?: number) => {
+    const order = await Order.findOne({ _id: orderId, restaurantId });
+    if (!order) {
+        throw new Error("Order not found for the restaurant.");
+    }
+
+    if (preparationTime) {
+        order.preparationTime = preparationTime;
+    }
+    order.status = status;
+
+    //save the updated order
+    await order.save();
+    return order;
+
+};
+
 export default {
   createNewRestaurant,
   getRestaurantById,
@@ -98,5 +122,7 @@ export default {
   updateRestaurantSettings,
   restaurantLogin,
   getAllRestaurants,
-  searchRestaurantByName,
+    searchRestaurantByName,
+  checkOrderBelongsToRestaurant,
+  manageOrderStatus,
 };

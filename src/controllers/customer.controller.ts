@@ -107,3 +107,22 @@ export const getSavedRestaurants = async (req: Request, res: Response) => {
     });
 
 };
+
+//Cancel order by customer controller
+export const cancelOrderByCustomer = async (req: Request, res: Response) => {
+    const customerId = req.user?.id as string;
+    const orderId = req.params.orderId as string;
+
+    //check if customerId and orderId are provided
+    if (!customerId || !orderId) {
+        res.status(400).send("customer id and order id are required");
+        return;
+    }
+
+    //Call service to cancel order by customer
+    const {message} = await customerService.cancelOrderByCustomer(customerId, orderId);
+
+    //send response
+    res.status(200).send({message});
+
+};

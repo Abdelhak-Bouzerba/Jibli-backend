@@ -20,6 +20,7 @@ const orderSchema = new mongoose.Schema<IOrder>({
     items: [itemSchema],
     subtotal: { type: Number, required: true },
     totalPrice: { type: Number, required: true },
+    preparationTime: { type: Number, required: false , default: 0},
     status: {
         type: String,
         enum: ["pending", "accepted", "preparing", "ready-to-pickup", "out-for-delivery", "at-door", "delivered", "cancelled"],

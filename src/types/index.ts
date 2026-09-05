@@ -116,7 +116,7 @@ export interface ICart extends Document {
   updatedAt: Date;
 }
 
-type Status = "pending" | "accepted" | "preparing" | "ready-to-pickup" | "out-for-delivery" |"at-door"| "delivered" | "cancelled";
+export type Status = "pending" | "accepted" | "preparing" | "ready-to-pickup" | "out-for-delivery" |"at-door"| "delivered" | "cancelled";
 export interface IOrder extends Document {
   orderNumber: string;
   customerId: Types.ObjectId; // Reference to the customer
@@ -125,6 +125,7 @@ export interface IOrder extends Document {
   items: IItem[];
   subtotal: number;
   totalPrice: number; // Total price including delivery fee
+  preparationTime: number; // Estimated preparation time in minutes
   status: Status;
   deliveryDetails: {
     fee: number;

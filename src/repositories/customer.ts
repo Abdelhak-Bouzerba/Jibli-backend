@@ -1,4 +1,5 @@
 import Customer from "../models/customer";
+import Order from "../models/order";
 import { ICustomer } from "../types/index";
 
 //Create a new customer
@@ -63,6 +64,27 @@ const getSavedRestaurants = async (customerId: string) => {
   return customer?.savedRestaurants;
 }
 
+//Cancel order by customer
+const cancelOrderByCustomer = async (orderId: string, customerId: string) => {
+  const order = await Order.findOne({ _id: orderId, customerId });
+  if (!order) {
+    throw new Error("Order not found for the customer.");
+  }
+
+  if (order.status === "cancelled") {
+    throw new Error("Order is already cancelled.");
+  }
+
+  if (order.status === "pending") {
+    order.status = "cancelled";
+    await order.save();
+    return { message: "Order cancelled successfully" };
+  }
+
+  return { message: "cannot cancel order" };
+
+};
+
 export default {
   createCustomer,
   checkExistCustomer,
@@ -72,4 +94,5 @@ export default {
   checkSavedAddressExists,
   checkSavedRestaurantExists,
   getSavedRestaurants,
+  cancelOrderByCustomer,
 };

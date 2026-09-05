@@ -6,6 +6,7 @@ import {
   addSavedAddress,
   addSavedRestaurant,
   getSavedRestaurants,
+  cancelOrderByCustomer,
 } from "../../controllers/customer.controller";
 import { validateJWT } from "../../middlewares/validateJWT";
 import  requireRole  from "../../middlewares/requireRole";
@@ -40,5 +41,11 @@ v1router.post("/saved-restaurant", validateJWT, requireRole("customer"), asyncHa
 //@route GET /api/v1/customer/saved-restaurant
 //Access Private
 v1router.get("/saved-restaurant", validateJWT, requireRole("customer"), asyncHandler(getSavedRestaurants));
+
+
+//@desc Cancel order by customer
+//@route POST /api/v1/customer/orders/:orderId/cancel
+//Access Private
+v1router.post("/orders/:orderId/cancel", validateJWT, requireRole("customer"), asyncHandler(cancelOrderByCustomer));
 
 export default v1router;

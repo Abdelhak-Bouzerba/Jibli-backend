@@ -1,5 +1,6 @@
 import customerRepository from "../repositories/customer";
 import restaurantRepository from "../repositories/restaurant";
+import { Types } from "mongoose";
 import { ICustomer } from "../types";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
 import {
@@ -23,8 +24,17 @@ const createCustomer = async (customerData: ICustomer) => {
     throw new Error(`Validation error: ${parseResult.error.message}`);
   }
 
+  const customerDataForPersistence: Partial<ICustomer> = {
+    ...parseResult.data,
+    savedRestaurants: parseResult.data.savedRestaurants?.map(
+      (restaurantId) => new Types.ObjectId(restaurantId),
+    ),
+  };
+
   //create new customer
-  const customer = await customerRepository.createCustomer(parseResult.data);
+  const customer = await customerRepository.createCustomer(
+    customerDataForPersistence,
+  );
 
   //generate JWTtoken for the customer
   const token = generateJWTtoken({ id: customer._id, role: customer.role });
@@ -83,13 +93,15 @@ const addSavedRestaurant = async (customerId: string, restaurantId: string) => {
   }
 
   //check if restaurant exists
-  const restaurantExists = await restaurantRepository.checkRestaurantExistsById(restaurantId);
+  const restaurantExists =
+    await restaurantRepository.checkRestaurantExistsById(restaurantId);
   if (!restaurantExists) {
     throw new Error("Restaurant not found");
   }
 
   //check if restaurant is already saved
-  const savedRestaurantExists = await customerRepository.checkSavedRestaurantExists(
+  const savedRestaurantExists =
+    await customerRepository.checkSavedRestaurantExists(
       customerId,
       restaurantId,
     );
@@ -99,13 +111,29 @@ const addSavedRestaurant = async (customerId: string, restaurantId: string) => {
 
   //Add saved restaurant
   await customerRepository.addSavedRestaurant(customerId, restaurantId);
-
 };
 
 //Get saved restaurants
 const getSavedRestaurants = async (customerId: string) => {
-  const savedRestaurants = await customerRepository.getSavedRestaurants(customerId);
+  const savedRestaurants =
+    await customerRepository.getSavedRestaurants(customerId);
   return savedRestaurants;
+};
+
+//cancel order by customer
+const cancelOrderByCustomer = async (customerId: string, orderId: string) => {
+  //check if customer exists
+  const customer = await customerRepository.getCustomerById(customerId);
+  if (!customer) {
+    throw new Error("Customer not found");
+  }
+
+  //cancel order
+  const cancelledOrder = await customerRepository.cancelOrderByCustomer(
+    orderId,
+    customerId,
+  );
+  return cancelledOrder;
 };
 
 export default {
@@ -114,4 +142,5 @@ export default {
   addSavedAddress,
   addSavedRestaurant,
   getSavedRestaurants,
+  cancelOrderByCustomer,
 };

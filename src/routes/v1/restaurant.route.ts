@@ -9,6 +9,7 @@ import {
   getAllRestaurants,
   getSingleRestaurant,
   searchRestaurantByName,
+  manageOrderStatus,
 } from "../../controllers/restaurant.controller";
 import { validateJWT } from "../../middlewares/validateJWT";
 import requireRole from "../../middlewares/requireRole";
@@ -63,6 +64,12 @@ v1router.get("/search", asyncHandler(searchRestaurantByName));
 //@route GET /api/v1/restaurant/:restaurantId
 //access Public
 v1router.get("/:restaurantId", asyncHandler(getSingleRestaurant));
+
+
+//@desc Manage order status
+//@route PUT /api/v1/restaurant/orders/:orderId/status
+//access Private
+v1router.put("/orders/:orderId/status", validateJWT, requireRole("restaurant"), asyncHandler(manageOrderStatus));
 
 
 export default v1router;

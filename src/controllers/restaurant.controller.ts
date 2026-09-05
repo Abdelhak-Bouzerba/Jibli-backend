@@ -175,3 +175,32 @@ export const searchRestaurantByName = async (req: Request, res: Response) => {
     message: "Restaurants fetched successfully",
   });
 };
+
+//Order management controller
+export const manageOrderStatus = async (req: Request, res: Response) => {
+  const orderId = req.params.orderId as string;
+  const restaurantId = req.user?.id as string;
+  const { status, preparationTime } = req.body;
+
+  //check if orderId, restaurantId and status are provided
+  if (!orderId || !restaurantId || !status) {
+    res.status(400).json({message: "orderId, restaurantId and status are required"});
+    return;
+  }
+
+  //Call service to manage order status
+  const updatedOrder = await restaurantService.manageOrderStatus(
+    orderId,
+    restaurantId,
+    status,
+    preparationTime,
+  );
+
+  //send response
+  res.status(200).json({
+    order: updatedOrder,
+    message: "Order status updated successfully",
+  });
+};
+
+
