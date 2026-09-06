@@ -18,10 +18,7 @@ const createNewRestaurant = async (restaurantData: IRestaurant) => {
 //check if restaurant exists by Id
 const checkRestaurantExists = async (restaurantPhone: string) => {
     const rs = await Restaurant.findOne({ phone: restaurantPhone });
-    if (rs) {
-        return true;
-    }
-    return false;
+    return rs;
 };
 
 //Get all restaurants

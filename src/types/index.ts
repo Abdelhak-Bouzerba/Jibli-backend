@@ -157,3 +157,12 @@ export interface CreateOrderData {
     };
   };
 }
+
+//define OTP interface
+export interface IOtp { 
+  phone: string;
+  code: string;
+  expiresAt: Date;
+  isChecked: boolean;
+  attempts: number;
+}

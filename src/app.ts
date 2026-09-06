@@ -6,6 +6,7 @@ import productRoutes from "./routes/v1/product.route";
 import customerRoutes from "./routes/v1/customer.route";
 import cartRoutes from "./routes/v1/cart.route";
 import orderRoutes from "./routes/v1/order.route";
+import authRoutes from "./routes/v1/auth.route";
 
 
 
@@ -26,6 +27,7 @@ app.use("/api/v1", productRoutes);
 app.use("/api/v1/customer", customerRoutes);
 app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/orders", orderRoutes);
+app.use("/api/v1/auth", authRoutes);
 
 
 export default app;
