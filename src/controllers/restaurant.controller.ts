@@ -2,6 +2,7 @@ import restaurantService from "../services/restaurant.service";
 import { Request, Response } from "express";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
 import restaurantRepository from "../repositories/restaurant";
+import { ApiError } from "../utils/apiError";
 
 //Restaurant login controller
 export const restaurantLogin = async (req: Request, res: Response) => {
@@ -9,8 +10,7 @@ export const restaurantLogin = async (req: Request, res: Response) => {
 
   //check if phone is provided
   if (!phone) {
-    res.status(400).json({ message: "Phone number is required" });
-    return;
+    throw new ApiError(400, "Phone number is required");
   }
 
   //Call service to login restaurant
@@ -28,8 +28,7 @@ export const restaurantLogin = async (req: Request, res: Response) => {
 export const createRestaurant = async (req: Request, res: Response) => {
   //check if request body is empty
   if (!req.body || Object.keys(req.body).length === 0) {
-    res.status(400).json({ message: "Request body is empty" });
-    return;
+    throw new ApiError(400, "Request body is empty");
   }
 
   //Call service to create new restaurant
@@ -52,8 +51,7 @@ export const getProductsByCategory = async (req: Request, res: Response) => {
 
   //check if restaurantId and category are provided
   if (!restaurantId || !category) {
-    res.status(400).json({ message: "restaurantId and category are required" });
-    return;
+    throw new ApiError(400, "restaurantId and category are required");
   }
 
   //Call service to get products by category
@@ -73,8 +71,7 @@ export const manageRestaurantStatus = async (req: Request, res: Response) => {
 
   //check if restaurantId and status are provided
   if (!restaurantId || status === undefined) {
-    res.status(400).json({ message: "restaurantId and status are required" });
-    return;
+    throw new ApiError(400, "restaurantId and status are required");
   }
 
   //Call service to manage restaurant status
@@ -95,10 +92,7 @@ export const updateRestaurantSettings = async (req: Request, res: Response) => {
   const restaurantId = req.params.restaurantId as string;
 
   if (!restaurantId) {
-    res.status(400).json({
-      message: "restaurantId is required",
-    });
-    return;
+    throw new ApiError(400, "restaurantId is required");
   }
 
   const files = req.files as
@@ -139,10 +133,7 @@ export const getSingleRestaurant = async (req: Request, res: Response) => {
   const restaurantId = req.params.restaurantId as string;
 
   if (!restaurantId) {
-    res.status(400).json({
-      message: "restaurantId is required",
-    });
-    return;
+    throw new ApiError(400, "restaurantId is required");
   }
 
   //Call service to get single restaurant
@@ -160,10 +151,7 @@ export const searchRestaurantByName = async (req: Request, res: Response) => {
 
   //check if name is provided
   if (!name) {
-    res.status(400).json({
-      message: "name is required",
-    });
-    return;
+    throw new ApiError(400, "name is required");
   }
 
   //Call service to search restaurant by name
@@ -184,8 +172,7 @@ export const manageOrderStatus = async (req: Request, res: Response) => {
 
   //check if orderId, restaurantId and status are provided
   if (!orderId || !restaurantId || !status) {
-    res.status(400).json({message: "orderId, restaurantId and status are required"});
-    return;
+    throw new ApiError(400, "orderId, restaurantId and status are required");
   }
 
   //Call service to manage order status
@@ -202,5 +189,3 @@ export const manageOrderStatus = async (req: Request, res: Response) => {
     message: "Order status updated successfully",
   });
 };
-
-

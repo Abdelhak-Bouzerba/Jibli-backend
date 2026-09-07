@@ -1,6 +1,7 @@
 import Customer from "../models/customer";
 import Order from "../models/order";
 import { ICustomer } from "../types/index";
+import { ApiError } from "../utils/apiError";
 
 //Create a new customer
 const createCustomer = async (customerData: Partial<ICustomer>) => {
@@ -49,7 +50,10 @@ const addSavedRestaurant = async (customerId: string, restaurantId: string) => {
   );
 };
 
-const checkSavedRestaurantExists = async (customerId: string,restaurantId: string) => {
+const checkSavedRestaurantExists = async (
+  customerId: string,
+  restaurantId: string,
+) => {
   const savedRestaurantExists = await Customer.exists({
     _id: customerId,
     savedRestaurants: { $elemMatch: { $eq: restaurantId } },
@@ -60,19 +64,22 @@ const checkSavedRestaurantExists = async (customerId: string,restaurantId: strin
 
 //Get saved restaurants
 const getSavedRestaurants = async (customerId: string) => {
-  const customer = await Customer.findById(customerId).populate("savedRestaurants","name logo coverImage isOpen");
+  const customer = await Customer.findById(customerId).populate(
+    "savedRestaurants",
+    "name logo coverImage isOpen",
+  );
   return customer?.savedRestaurants;
-}
+};
 
 //Cancel order by customer
 const cancelOrderByCustomer = async (orderId: string, customerId: string) => {
   const order = await Order.findOne({ _id: orderId, customerId });
   if (!order) {
-    throw new Error("Order not found for the customer.");
+    throw new ApiError(404, "Order not found for the customer.");
   }
 
   if (order.status === "cancelled") {
-    throw new Error("Order is already cancelled.");
+    throw new ApiError(409, "Order is already cancelled.");
   }
 
   if (order.status === "pending") {
@@ -82,7 +89,6 @@ const cancelOrderByCustomer = async (orderId: string, customerId: string) => {
   }
 
   return { message: "cannot cancel order" };
-
 };
 
 export default {

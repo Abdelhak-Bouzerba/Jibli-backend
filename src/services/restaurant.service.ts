@@ -3,6 +3,7 @@ import { IRestaurant, Status } from "../types";
 import { createRestaurantSchema } from "../validators/restaurant.validator";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
+import { ApiError } from "../utils/apiError";
 
 //Restaurant login service
 const restaurantLogin = async (phone: string) => {
@@ -10,13 +11,13 @@ const restaurantLogin = async (phone: string) => {
   const restaurantExists =
     await restaurantRepository.checkRestaurantExists(phone);
   if (!restaurantExists) {
-    throw new Error("Restaurant does not exist");
+    throw new ApiError(404, "Restaurant does not exist");
   }
 
   //Login restaurant
   const restaurant = await restaurantRepository.restaurantLogin(phone);
   if (!restaurant) {
-    throw new Error("Restaurant not found");
+    throw new ApiError(404, "Restaurant not found");
   }
 
   //generate token
@@ -32,13 +33,13 @@ const createRestaurant = async (restaurantData: IRestaurant) => {
     restaurantData.phone,
   );
   if (existingRestaurant) {
-    throw new Error("Restaurant already exists");
+    throw new ApiError(409, "Restaurant already exists");
   }
 
   //validate restaurant data through zod schema
   const parseResult = createRestaurantSchema.safeParse(restaurantData);
   if (!parseResult.success) {
-    throw new Error(`Validation error: ${parseResult.error.message}`);
+    throw new ApiError(400, `Validation error: ${parseResult.error.message}`);
   }
 
   //Create new restaurant
@@ -55,12 +56,15 @@ const createRestaurant = async (restaurantData: IRestaurant) => {
 };
 
 //Get products by category service
-const getProductsByCategory = async (restaurantId: string,category: string) => {
+const getProductsByCategory = async (
+  restaurantId: string,
+  category: string,
+) => {
   //check if restaurant exists
   const restaurantExists =
     await restaurantRepository.checkRestaurantExistsById(restaurantId);
   if (!restaurantExists) {
-    throw new Error("Restaurant does not exist");
+    throw new ApiError(404, "Restaurant does not exist");
   }
 
   //Get products by category
@@ -72,12 +76,15 @@ const getProductsByCategory = async (restaurantId: string,category: string) => {
 };
 
 //Manage restauarnt status service
-const manageRestaurantStatus = async (restaurantId: string,status: boolean,) => {
+const manageRestaurantStatus = async (
+  restaurantId: string,
+  status: boolean,
+) => {
   //check if restaurant exists
   const restaurantExists =
     await restaurantRepository.checkRestaurantExistsById(restaurantId);
   if (!restaurantExists) {
-    throw new Error("Restaurant does not exist");
+    throw new ApiError(404, "Restaurant does not exist");
   }
 
   //Update restaurant status
@@ -89,11 +96,17 @@ const manageRestaurantStatus = async (restaurantId: string,status: boolean,) => 
 };
 
 //Update restaurant settings service
-const updateRestaurantSettings = async (restaurantId: string,settings: Partial<IRestaurant>,logo?: Express.Multer.File,coverPhoto?: Express.Multer.File) => {
+const updateRestaurantSettings = async (
+  restaurantId: string,
+  settings: Partial<IRestaurant>,
+  logo?: Express.Multer.File,
+  coverPhoto?: Express.Multer.File,
+) => {
   //check if restaurant exists
-  const existingRestaurant =await restaurantRepository.checkRestaurantExistsById(restaurantId);
+  const existingRestaurant =
+    await restaurantRepository.checkRestaurantExistsById(restaurantId);
   if (!existingRestaurant) {
-    throw new Error("Restaurant does not exist");
+    throw new ApiError(404, "Restaurant does not exist");
   }
   //get settings data
   const updatedSettings: Partial<IRestaurant> = {
@@ -166,15 +179,14 @@ const updateRestaurantSettings = async (restaurantId: string,settings: Partial<I
 
 //Get all restaurants service
 const getAllRestaurants = async () => {
-    const restaurants = await restaurantRepository.getAllRestaurants();
-    return restaurants;
-
+  const restaurants = await restaurantRepository.getAllRestaurants();
+  return restaurants;
 };
 
 //Get single restaurant
-const getSingleRestaurant = async(restaurantId: string) => {
-    const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
-    return restaurant;
+const getSingleRestaurant = async (restaurantId: string) => {
+  const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
+  return restaurant;
 };
 
 //Search restaurant by name service
@@ -184,8 +196,18 @@ const searchRestaurantByName = async (name: string) => {
 };
 
 //order management service
-const manageOrderStatus = async (orderId: string, restaurantId: string, status: Status, preparationTime?: number) => {
-  const updatedOrder = await restaurantRepository.manageOrderStatus(orderId, restaurantId, status, preparationTime);
+const manageOrderStatus = async (
+  orderId: string,
+  restaurantId: string,
+  status: Status,
+  preparationTime?: number,
+) => {
+  const updatedOrder = await restaurantRepository.manageOrderStatus(
+    orderId,
+    restaurantId,
+    status,
+    preparationTime,
+  );
   return updatedOrder;
 };
 

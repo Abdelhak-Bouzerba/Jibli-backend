@@ -6,9 +6,16 @@ import { IOtp } from "../types";
 import { sendOTP } from "../utils/sms";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
 import bcrypt from "bcrypt";
+import { ApiError } from "../utils/apiError";
 
 //Create OTP service
 const createOtp = async (phone: string) => {
+  //validate phone
+  const parseResult = otpSchema.safeParse({ phone });
+  if (!parseResult.success) {
+    throw new ApiError(400, `Validation failed: ${parseResult.error.message}`);
+  }
+
   //generate OTP code & expiration date
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
   const hash = await bcrypt.hash(otpCode, 10);
@@ -29,7 +36,6 @@ const createOtp = async (phone: string) => {
 
   //send OTP via SMS
   await sendOTP(phone, otpCode);
-
 };
 
 //Verify OTP service
@@ -37,7 +43,7 @@ const verifyOtp = async (phone: string, code: string, role: string) => {
   //vlidate otpData
   const parseResult = otpSchema.safeParse({ phone, code, role });
   if (!parseResult.success) {
-    throw new Error(`Validation failed: ${parseResult.error.message}`);
+    throw new ApiError(400, `Validation failed: ${parseResult.error.message}`);
   }
 
   //verify OTP
@@ -86,7 +92,7 @@ const verifyOtp = async (phone: string, code: string, role: string) => {
       };
     }
   }
-  //rider case included here later
+  throw new ApiError(400, "Unsupported role");
 };
 
 export default {

@@ -7,7 +7,7 @@ import customerRoutes from "./routes/v1/customer.route";
 import cartRoutes from "./routes/v1/cart.route";
 import orderRoutes from "./routes/v1/order.route";
 import authRoutes from "./routes/v1/auth.route";
-
+import { errorHandler } from "./middlewares/errorHandler";
 
 
 const app = express();
@@ -28,6 +28,10 @@ app.use("/api/v1/customer", customerRoutes);
 app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/auth", authRoutes);
+
+
+//Error handling middleware
+app.use(errorHandler);
 
 
 export default app;

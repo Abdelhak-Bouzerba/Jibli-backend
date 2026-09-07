@@ -3,20 +3,18 @@ import { Request, Response } from "express";
 import { IProduct } from "../types";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
 import productRepository from "../repositories/product";
-
+import { ApiError } from "../utils/apiError";
 
 //Create a new product controller
 export const createProduct = async (req: Request, res: Response) => {
   // Check if request body is empty
   if (!req.body || Object.keys(req.body).length === 0) {
-    res.status(400).json({ message: "Product data is required" });
-    return;
-  }  
+    throw new ApiError(400, "Product data is required");
+  }
 
   // Check if image was uploaded
   if (!req.file) {
-    res.status(400).json({ message: "Product image is required" });
-    return;
+    throw new ApiError(400, "Product image is required");
   }
 
   const result = await uploadToCloudinary(req.file.buffer, "jibli/products");
@@ -39,7 +37,7 @@ export const createProduct = async (req: Request, res: Response) => {
     variants: variant,
     image: {
       url: result.secure_url,
-      publicId: result.public_id
+      publicId: result.public_id,
     },
     price: Number(data.price),
     preparationTime: Number(data.preparationTime),
@@ -73,8 +71,7 @@ export const getProductById = async (req: Request, res: Response) => {
   //Extract productId from request params & check if it's provided
   const { productId } = req.params;
   if (!productId) {
-    res.status(400).json({ message: "Product ID is required" });
-    return;
+    throw new ApiError(400, "Product ID is required");
   }
 
   //Call the service to get the product by ID
@@ -102,10 +99,9 @@ export const updateProduct = async (req: Request, res: Response) => {
 
   // Only update image if a new image was uploaded
   if (req.file) {
-
     //delete the old image from cloudinary
     const existingProduct = await productRepository.getProductById(productId);
-    if(existingProduct?.image && existingProduct.image.publicId) {
+    if (existingProduct?.image && existingProduct.image.publicId) {
       const publicId = existingProduct.image.publicId;
       await deleteFromCloudinary(publicId);
     }
@@ -114,7 +110,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     const result = await uploadToCloudinary(req.file.buffer, "jibli/products");
     data.image = {
       url: result.secure_url,
-      publicId: result.public_id
+      publicId: result.public_id,
     };
   }
 
@@ -139,7 +135,6 @@ export const updateProduct = async (req: Request, res: Response) => {
 
 //Delete a product controller
 export const deleteProduct = async (req: Request, res: Response) => {
-  
   //Get productId from request params
   const productId = req.params.productId as string;
 

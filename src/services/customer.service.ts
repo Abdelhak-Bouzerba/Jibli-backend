@@ -7,6 +7,7 @@ import {
   createCustomerSchema,
   addSavedAddressSchema,
 } from "../validators/customer.validator";
+import { ApiError } from "../utils/apiError";
 
 //Create a new customer
 const createCustomer = async (customerData: ICustomer) => {
@@ -15,13 +16,13 @@ const createCustomer = async (customerData: ICustomer) => {
     customerData?.phone,
   );
   if (existingCustomer) {
-    throw new Error("Customer already exists");
+    throw new ApiError(409, "Customer already exists");
   }
 
   //Validate customer data
   const parseResult = createCustomerSchema.safeParse(customerData);
   if (parseResult.error) {
-    throw new Error(`Validation error: ${parseResult.error.message}`);
+    throw new ApiError(400, `Validation error: ${parseResult.error.message}`);
   }
 
   const customerDataForPersistence: Partial<ICustomer> = {
@@ -47,7 +48,7 @@ const getCustomerProfile = async (customerId: string) => {
   //check if customer exists
   const customer = await customerRepository.getCustomerById(customerId);
   if (!customer) {
-    throw new Error("Customer not found");
+    throw new ApiError(404, "Customer not found");
   }
 
   return customer;
@@ -58,7 +59,7 @@ const addSavedAddress = async (customerId: string, location: any) => {
   //check if customer exists
   const customer = await customerRepository.getCustomerById(customerId);
   if (!customer) {
-    throw new Error("Customer not found");
+    throw new ApiError(404, "Customer not found");
   }
 
   //check if saved address already exists
@@ -67,13 +68,13 @@ const addSavedAddress = async (customerId: string, location: any) => {
     location,
   );
   if (savedAddressExists) {
-    throw new Error("Saved address already exists");
+    throw new ApiError(409, "Saved address already exists");
   }
 
   //validate location object
   const parseResult = addSavedAddressSchema.safeParse(location);
   if (parseResult.error) {
-    throw new Error(`Validation error: ${parseResult.error.message}`);
+    throw new ApiError(400, `Validation error: ${parseResult.error.message}`);
   }
 
   //Add saved address
@@ -89,14 +90,14 @@ const addSavedRestaurant = async (customerId: string, restaurantId: string) => {
   //check if customer exists
   const customer = await customerRepository.getCustomerById(customerId);
   if (!customer) {
-    throw new Error("Customer not found");
+    throw new ApiError(404, "Customer not found");
   }
 
   //check if restaurant exists
   const restaurantExists =
     await restaurantRepository.checkRestaurantExistsById(restaurantId);
   if (!restaurantExists) {
-    throw new Error("Restaurant not found");
+    throw new ApiError(404, "Restaurant not found");
   }
 
   //check if restaurant is already saved
@@ -106,7 +107,7 @@ const addSavedRestaurant = async (customerId: string, restaurantId: string) => {
       restaurantId,
     );
   if (savedRestaurantExists) {
-    throw new Error("Restaurant already saved");
+    throw new ApiError(409, "Restaurant already saved");
   }
 
   //Add saved restaurant
@@ -125,7 +126,7 @@ const cancelOrderByCustomer = async (customerId: string, orderId: string) => {
   //check if customer exists
   const customer = await customerRepository.getCustomerById(customerId);
   if (!customer) {
-    throw new Error("Customer not found");
+    throw new ApiError(404, "Customer not found");
   }
 
   //cancel order

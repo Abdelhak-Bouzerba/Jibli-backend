@@ -1,5 +1,6 @@
-import { Request, Response } from "express";
+import { Request } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import { ApiError } from "../utils/apiError";
 
 /**
  * Normalize phone number
@@ -53,11 +54,8 @@ export const sendOtpLimiter = rateLimit({
     return `${ip}:${phone}`;
   },
 
-  handler: (_req: Request, res: Response) => {
-    res.status(429).json({
-      status: "error",
-      message: "Too many OTP requests. Please try again later.",
-    });
+  handler: (_req, _res, next) => {
+    next(new ApiError(429, "Too many OTP requests. Please try again later."));
   },
 });
 
@@ -83,10 +81,12 @@ export const verifyOtpLimiter = rateLimit({
     return `${ip}:${phone}`;
   },
 
-  handler: (_req: Request, res: Response) => {
-    res.status(429).json({
-      status: "error",
-      message: "Too many verification attempts. Please try again later.",
-    });
+  handler: (_req, _res, next) => {
+    next(
+      new ApiError(
+        429,
+        "Too many verification attempts. Please try again later.",
+      ),
+    );
   },
 });

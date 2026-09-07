@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import productRepository from "../repositories/product";
 import restaurantRepository from "../repositories/restaurant";
+import { ApiError } from "../utils/apiError";
 
 // export const authorizeRestaurant = async (req: Request, res: Response, next: NextFunction,) => {
 //   const restaurantId = req.user?.id as string;
@@ -28,15 +29,16 @@ import restaurantRepository from "../repositories/restaurant";
 
 // }
 
-export const authorizeRestaurant = async (req: Request,res: Response,next: NextFunction) => {
+export const authorizeRestaurant = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const restaurantId = req.user?.id;
 
     if (!restaurantId) {
-      res.status(401).json({
-        message: "Authentication required",
-      });
-      return;
+      return next(new ApiError(401, "Authentication required"));
     }
 
     const rsId = req.params.restaurantId as string;
@@ -45,10 +47,7 @@ export const authorizeRestaurant = async (req: Request,res: Response,next: NextF
     // Route contains restaurantId
     if (rsId) {
       if (restaurantId !== rsId) {
-        res.status(403).json({
-          message: "You are not authorized",
-        });
-        return;
+        return next(new ApiError(403, "You are not authorized"));
       }
 
       next();
@@ -60,26 +59,18 @@ export const authorizeRestaurant = async (req: Request,res: Response,next: NextF
       const product = await productRepository.getProductById(productId);
 
       if (!product) {
-        res.status(404).json({
-          message: "Product not found",
-        });
-        return;
+        return next(new ApiError(404, "Product not found"));
       }
 
       if (restaurantId !== product.restaurantId.toString()) {
-        res.status(403).json({
-          message: "You are not authorized",
-        });
-        return;
+        return next(new ApiError(403, "You are not authorized"));
       }
 
       next();
       return;
     }
 
-    res.status(400).json({
-      message: "Missing resource identifier",
-    });
+    return next(new ApiError(400, "Missing resource identifier"));
   } catch (error) {
     next(error);
   }
