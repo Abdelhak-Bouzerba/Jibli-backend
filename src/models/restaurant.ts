@@ -2,13 +2,13 @@ import mongoose from "mongoose";
 import { IRestaurant } from "../types/index.js";
 
 const workingDaysSchema = new mongoose.Schema({
-    sunday: { open: { type: String, required: true }, close: { type: String, required: true } },
-    monday: { open: { type: String, required: true }, close: { type: String, required: true } },
-    tuesday: { open: { type: String, required: true }, close: { type: String, required: true } },
-    wednesday: { open: { type: String, required: true }, close: { type: String, required: true } },
-    thursday: { open: { type: String, required: true }, close: { type: String, required: true } },
-    friday: { open: { type: String, required: true }, close: { type: String, required: true } },
-    saturday: { open: { type: String, required: true }, close: { type: String, required: true } },
+    sunday: { open: { type: String, required: false }, close: { type: String, required: false } },
+    monday: { open: { type: String, required: false }, close: { type: String, required: false } },
+    tuesday: { open: { type: String, required: false }, close: { type: String, required: false } },
+    wednesday: { open: { type: String, required: false }, close: { type: String, required: false } },
+    thursday: { open: { type: String, required: false }, close: { type: String, required: false } },
+    friday: { open: { type: String, required: false }, close: { type: String, required: false } },
+    saturday: { open: { type: String, required: false }, close: { type: String, required: false } },
 });
 
 const restaurantSchema = new mongoose.Schema<IRestaurant>({
@@ -43,5 +43,8 @@ const restaurantSchema = new mongoose.Schema<IRestaurant>({
 });
 
 const Restaurant = mongoose.model<IRestaurant>("Restaurant", restaurantSchema);
+
+//create 2dsphere index for geospatial queries
+restaurantSchema.index({ "location.coordinates": "2dsphere" });
 
 export default Restaurant;

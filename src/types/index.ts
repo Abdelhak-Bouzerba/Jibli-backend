@@ -1,5 +1,12 @@
 import { Document, Types } from "mongoose";
 
+export interface ILocation { 
+  city: string;
+  coordinates: {
+    type: "Point";
+    coordinates: [number, number]; // [lng, lat]
+  };
+}
 type restaurantTags =
   | "fast-food"
   | "restaurant"

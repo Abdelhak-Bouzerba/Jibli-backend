@@ -31,10 +31,24 @@ export const createRestaurant = async (req: Request, res: Response) => {
     throw new ApiError(400, "Request body is empty");
   }
 
+  const files = req.files as
+    | {
+        [fieldname: string]: Express.Multer.File[];
+      }
+    | undefined;
+
+  const logo = files?.logo?.[0];
+  const coverPhoto = files?.coverPhoto?.[0];
+
+  //prepare restaurant data
+  const restaurantData = {
+    ...req.body,
+    logo,
+    coverPhoto,
+  };
+
   //Call service to create new restaurant
-  const { token, newRestaurant } = await restaurantService.createRestaurant(
-    req.body,
-  );
+  const { token, newRestaurant } = await restaurantService.createRestaurant(restaurantData , logo , coverPhoto);
 
   //send response
   res.status(201).send({
@@ -117,27 +131,35 @@ export const updateRestaurantSettings = async (req: Request, res: Response) => {
   });
 };
 
-//Get all restaurants controller
-export const getAllRestaurants = async (req: Request, res: Response) => {
-  //Call service to get all restaurants
-  const restaurants = await restaurantService.getAllRestaurants();
+//Get nearby restaurants controller
+export const getNearbyRestaurants = async (req: Request, res: Response) => {
+  const { location } = req.body;
+
+  //check if location is provided
+  if (!location || !location.coordinates) {
+    throw new ApiError(400, "Location is required");
+  }
+
+  //Call service to get nearby restaurants
+  const restaurants = await restaurantService.getNearbyRestaurants(location);
 
   //send response
-  res
-    .status(200)
-    .json({ restaurants, message: "Restaurants fetched successfully" });
+  res.status(200).json({
+    restaurants,
+    message: "Restaurants fetched successfully"
+  });
 };
 
-//Get single restaurant controller
-export const getSingleRestaurant = async (req: Request, res: Response) => {
-  const restaurantId = req.params.restaurantId as string;
+//Get restaurant Profile controller
+export const getRestaurantProfile = async (req: Request, res: Response) => {
+  const restaurantId = req.body.restaurantId as string;
 
   if (!restaurantId) {
     throw new ApiError(400, "restaurantId is required");
   }
 
   //Call service to get single restaurant
-  const restaurant = await restaurantService.getSingleRestaurant(restaurantId);
+  const restaurant = await restaurantService.getRestaurantProfile(restaurantId);
 
   //send response
   res

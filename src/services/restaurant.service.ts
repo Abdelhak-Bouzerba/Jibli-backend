@@ -4,6 +4,7 @@ import { createRestaurantSchema } from "../validators/restaurant.validator";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
 import { ApiError } from "../utils/apiError";
+import { ILocation } from "../types/index";
 
 //Restaurant login service
 const restaurantLogin = async (phone: string) => {
@@ -27,7 +28,7 @@ const restaurantLogin = async (phone: string) => {
 };
 
 //Create new Restaurant service
-const createRestaurant = async (restaurantData: IRestaurant) => {
+const createRestaurant = async (restaurantData: IRestaurant,logo?: Express.Multer.File,coverPhoto?: Express.Multer.File) => {
   //Check if restaurant already exists
   const existingRestaurant = await restaurantRepository.checkRestaurantExists(
     restaurantData.phone,
@@ -45,6 +46,32 @@ const createRestaurant = async (restaurantData: IRestaurant) => {
   //Create new restaurant
   const newRestaurant =
     await restaurantRepository.createNewRestaurant(restaurantData);
+
+  // Upload logo to cloudinary and path at databse
+  if (newRestaurant && logo) {
+    const resultLogo = await uploadToCloudinary(
+      logo.buffer,
+      "jibli/restaurants",
+    );
+    newRestaurant.logo = {
+      url: resultLogo.secure_url,
+      publicId: resultLogo.public_id,
+    };
+  }
+  // Upload CoverPhto to cloudinary and path at databse
+  if (newRestaurant && coverPhoto) {
+    const resultCover = await uploadToCloudinary(
+      coverPhoto.buffer,
+      "jibli/restaurants",
+    );
+    newRestaurant.coverPhoto = {
+      url: resultCover.secure_url,
+      publicId: resultCover.public_id,
+    };
+  }
+
+  //save to database
+  await newRestaurant.save();
 
   //generate JWT token
   const token = generateJWTtoken({
@@ -177,14 +204,14 @@ const updateRestaurantSettings = async (
   }
 };
 
-//Get all restaurants service
-const getAllRestaurants = async () => {
-  const restaurants = await restaurantRepository.getAllRestaurants();
+//Get nearby restaurants service
+const getNearbyRestaurants = async (location: ILocation) => {
+  const restaurants = await restaurantRepository.getNearbyRestaurants(location);
   return restaurants;
 };
 
-//Get single restaurant
-const getSingleRestaurant = async (restaurantId: string) => {
+//Get restaurant Profile
+const getRestaurantProfile = async (restaurantId: string) => {
   const restaurant = await restaurantRepository.getRestaurantById(restaurantId);
   return restaurant;
 };
@@ -217,8 +244,8 @@ export default {
   manageRestaurantStatus,
   updateRestaurantSettings,
   restaurantLogin,
-  getAllRestaurants,
-  getSingleRestaurant,
+  getNearbyRestaurants,
+  getRestaurantProfile,
   searchRestaurantByName,
   manageOrderStatus,
 };

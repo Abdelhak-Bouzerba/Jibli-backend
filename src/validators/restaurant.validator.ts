@@ -20,31 +20,31 @@ export const createRestaurantSchema = zod.object({
         sunday: zod.object({
             open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
             close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-        }),
+        }).optional(),
         monday: zod.object({
             open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
             close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-        }),
+        }).optional(),
         tuesday: zod.object({
             open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
             close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-        }),
+        }).optional(),
         wednesday: zod.object({
             open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
             close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-        }),
+        }).optional(),
         thursday: zod.object({
             open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
             close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-        }),
+        }).optional(),
         friday: zod.object({
             open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
             close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-        }),
+        }).optional(),
         saturday: zod.object({
             open: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid opening time format (HH:mm)"),
             close: zod.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid closing time format (HH:mm)"),
-        }),
+        }).optional(),
     }).optional(),
     coverPhoto: zod.object({
         url: zod.string().url("Invalid URL"),

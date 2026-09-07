@@ -3,7 +3,7 @@
 **API version:** v1  
 **Base URL:** `/api/v1`  
 **Content types:** `application/json` unless an endpoint explicitly requires `multipart/form-data`  
-**Last updated:** 2026-09-07
+**Last updated:** 2026-09-08
 
 This document describes the HTTP API currently implemented by the Jibli backend. Response examples show the application-level fields; MongoDB documents may also contain `_id`, `createdAt`, and `updatedAt` fields unless the endpoint applies a projection.
 
@@ -68,7 +68,7 @@ Supported roles currently used by route middleware are:
 - `customer`
 - `restaurant`
 
-The OTP validator also accepts `rider`, but rider verification is not implemented and should not be used.
+OTP verification currently supports only `customer` and `restaurant`. The service rejects `rider` with `400 Unsupported role`.
 
 ### Access notation
 
@@ -233,11 +233,11 @@ Verifies the SMS code and, for an existing account, returns a JWT.
 
 #### Request body
 
-| Field   | Type   | Required | Allowed values                                 |
-| ------- | ------ | :------: | ---------------------------------------------- |
-| `phone` | string |   Yes    | Ten digits according to the current validator. |
-| `code`  | string |   Yes    | At least six characters.                       |
-| `role`  | string |   Yes    | `customer`, `restaurant`, or `rider`.          |
+| Field   | Type   | Required | Allowed values                                                         |
+| ------- | ------ | :------: | ---------------------------------------------------------------------- |
+| `phone` | string |   Yes    | Ten digits according to the current validator.                         |
+| `code`  | string |   Yes    | Verification code. Code length is not validated by the current schema. |
+| `role`  | string |   Yes    | `customer` or `restaurant`.                                            |
 
 ```json
 {
@@ -272,7 +272,9 @@ Restaurant verification uses the corresponding `isNewRestaurant` field and retur
 
 - `400 Bad Request` — `{ "message": "Phone, code and role are required." }`
 - `429 Too Many Requests` — verification rate limit exceeded.
-- `500 Internal Server Error` — `OTP not found`, invalid/expired OTP, validation failure, or database failure as currently propagated.
+- `400 Bad Request` — validation failure, `OTP not found`, expired or invalid OTP, or `Unsupported role`.
+- `429 Too Many Requests` — verification rate limit or failed-attempt limit exceeded.
+- `500 Internal Server Error` — unexpected database or provider failure.
 
 ## Restaurant endpoints
 
@@ -307,15 +309,17 @@ Base path: `/api/v1/restaurant`
 #### Errors
 
 - `400` — `{ "message": "Phone number is required" }`
-- `500` — `Restaurant does not exist`, `Restaurant not found`, or a database error.
+- `404` — `Restaurant does not exist` or `Restaurant not found`.
+- `500` — unexpected database error.
 
 ### Create restaurant
 
 `POST /api/v1/restaurant/create`
 
 **Access:** Public
+**Content type:** `multipart/form-data`
 
-#### Request body
+#### Form fields
 
 ```json
 {
@@ -336,7 +340,16 @@ Base path: `/api/v1/restaurant`
 }
 ```
 
-Required fields are `name`, `phone`, `tags`, and `location`. The complete `workingDays` object, when supplied, contains `sunday` through `saturday`, each with `open` and `close` in `HH:mm` format. Optional fields include `email`, `description`, `logo`, `coverPhoto`, `rating`, `ratingCount`, `isOpen`, `isActive`, and `workingDays`.
+Required fields are `name`, `phone`, `tags`, and `location`. Each `workingDays` weekday is optional; when supplied, its `open` and `close` values must use `HH:mm` format. `location.city` must contain at least five characters and `location.coordinates.coordinates` must contain exactly two numbers in `[longitude, latitude]` order. Optional scalar fields include `email`, `description`, `rating`, `ratingCount`, `isOpen`, `isActive`, and `workingDays`.
+
+#### Files
+
+| Field        | Type       | Max count | Limit |
+| ------------ | ---------- | :-------: | ----: |
+| `logo`       | image file |     1     |  5 MB |
+| `coverPhoto` | image file |     1     |  5 MB |
+
+Image fields must be uploaded as multipart files, not JSON URL objects. The current create flow may reject supplied image files because its URL-object validation runs before the uploaded files are persisted.
 
 #### Success response — `201 Created`
 
@@ -351,7 +364,9 @@ Required fields are `name`, `phone`, `tags`, and `location`. The complete `worki
 #### Errors
 
 - `400` — `{ "message": "Request body is empty" }`
-- `500` — duplicate phone, validation, or database error.
+- `400` — validation error.
+- `409` — `{ "message": "Restaurant already exists" }` for a duplicate phone number.
+- `500` — Cloudinary, database, or other unexpected error.
 
 ### Get products by category
 
@@ -378,7 +393,8 @@ Required fields are `name`, `phone`, `tags`, and `location`. The complete `worki
 #### Errors
 
 - `400` — `{ "message": "restaurantId and category are required" }`
-- `500` — restaurant not found, invalid ID, or database error.
+- `404` — `{ "message": "Restaurant does not exist" }`.
+- `500` — invalid ID or unexpected database error.
 
 ### Update restaurant status
 
@@ -410,7 +426,8 @@ Required fields are `name`, `phone`, `tags`, and `location`. The complete `worki
 - `400` — missing `restaurantId` or `status`.
 - `401` — missing or invalid JWT.
 - `403` — token is not a restaurant token or does not own the route resource.
-- `500` — restaurant not found or database error.
+- `404` — `{ "message": "Restaurant does not exist" }`.
+- `500` — unexpected database error.
 
 ### Update restaurant settings
 
@@ -421,7 +438,23 @@ Required fields are `name`, `phone`, `tags`, and `location`. The complete `worki
 
 #### Form fields
 
-Restaurant settings may be supplied as form fields, including `name`, `description`, `phone`, `email`, `isOpen`, `isActive`, `tags`, and location/working-day fields. Current implementation passes body fields through to the update service; clients should send only supported restaurant fields.
+The request body must contain a `settings` field. `settings` contains the restaurant fields to update, including `name`, `description`, `phone`, `email`, `isOpen`, `isActive`, `tags`, and location/working-day fields. In JSON-compatible form, the shape is:
+
+```json
+{
+  "settings": {
+    "name": "Jibli Kitchen",
+    "isOpen": true,
+    "tags": ["restaurant"],
+    "location": {
+      "city": "Amman",
+      "coordinates": { "type": "Point", "coordinates": [35.9106, 31.9539] }
+    }
+  }
+}
+```
+
+When using `multipart/form-data`, send the `settings` value in the form body using the parser-compatible representation for the nested object. Current implementation passes the body value directly to the update service without applying the restaurant creation schema; only supported restaurant fields should be sent.
 
 #### Files
 
@@ -444,13 +477,27 @@ Restaurant settings may be supplied as form fields, including `name`, `descripti
 - `400` — `{ "message": "restaurantId is required" }`
 - `401` — missing or invalid JWT.
 - `403` — wrong role or another restaurant's ID.
-- `500` — upload, Cloudinary, validation, or database error.
+- `404` — `{ "message": "Restaurant does not exist" }`.
+- `500` — upload, Cloudinary, validation, or unexpected database error.
 
-### List restaurants
+### Get nearby restaurants
 
-`GET /api/v1/restaurant/all`
+`GET /api/v1/restaurant/nearby`
 
 **Access:** Public
+
+The current implementation reads the location from the JSON request body of this `GET` request and searches within a fixed 5-kilometre radius.
+
+#### Request body
+
+```json
+{
+  "location": {
+    "city": "Amman",
+    "coordinates": { "type": "Point", "coordinates": [35.9106, 31.9539] }
+  }
+}
+```
 
 #### Success response — `200 OK`
 
@@ -461,7 +508,10 @@ Restaurant settings may be supplied as form fields, including `name`, `descripti
 }
 ```
 
-The public projection excludes `phone`, `ratingCount`, `createdAt`, `updatedAt`, and `role`.
+#### Errors
+
+- `400` — `{ "message": "Location is required" }`.
+- `500` — database or geospatial query error.
 
 ### Search restaurants
 
@@ -484,18 +534,24 @@ The public projection excludes `phone`, `ratingCount`, `createdAt`, `updatedAt`,
 }
 ```
 
-The same public projection as the list endpoint is returned.
+The search repository applies a public projection excluding `phone`, `ratingCount`, `createdAt`, `updatedAt`, and `role`.
 
 #### Errors
 
 - `400` — `{ "message": "name is required" }`
 - `500` — database or search error.
 
-### Get restaurant by ID
+### Get restaurant profile
 
-`GET /api/v1/restaurant/:restaurantId`
+`GET /api/v1/restaurant/profile`
 
 **Access:** Public
+
+The `restaurantId` is supplied in the JSON request body:
+
+```json
+{ "restaurantId": "665f1c9d2c8e4d0012345678" }
+```
 
 #### Success response — `200 OK`
 
@@ -506,7 +562,12 @@ The same public projection as the list endpoint is returned.
 }
 ```
 
-The public projection excludes `phone`, `ratingCount`, `createdAt`, `updatedAt`, and `role`. A missing restaurant currently results in `restaurant: null` rather than a dedicated `404` response.
+A missing restaurant currently results in `200 OK` with `restaurant: null`. The endpoint does not apply a public projection, so the full restaurant document may include `phone`, `role`, timestamps, and other fields.
+
+#### Errors
+
+- `400` — `{ "message": "restaurantId is required" }`.
+- `500` — invalid ID or database error.
 
 ### Update restaurant order status
 
@@ -592,7 +653,11 @@ Example `variants` value:
 - `400` — missing product data or image.
 - `401` — missing or invalid JWT.
 - `403` — token is not a restaurant token.
-- `500` — malformed `variants`, Cloudinary, validation, duplicate product, or database error.
+- `404` — restaurant does not exist.
+- `409` — product with the same name already exists.
+- `500` — malformed `variants`, Cloudinary, or unexpected database error.
+
+The route requires a restaurant-role JWT, but the current implementation does not verify that the submitted `restaurantId` belongs to the authenticated restaurant.
 
 ### List products
 
@@ -626,7 +691,6 @@ Timestamps and `__v` are excluded from the product projection.
     "_id": "665f1c9d2c8e4d0012345679",
     "name": "Chicken Sandwich",
     "category": "sandwich",
-    "variants": [{ "size": "regular", "price": 3.5 }],
     "preparationTime": 15,
     "isAvailable": true,
     "image": { "url": "https://cdn.example/product.png" },
@@ -635,10 +699,13 @@ Timestamps and `__v` are excluded from the product projection.
 }
 ```
 
+The current repository projection returns `name`, `price`, `category`, `preparationTime`, `isAvailable`, `image`, and `restaurantId` (plus `_id`); `variants` and `description` are not included.
+
 #### Errors
 
 - `400` — `{ "message": "Product ID is required" }`
-- `500` — invalid product ID or product does not exist.
+- `400` — `{ "message": "Invalid product ID." }`.
+- `404` — `{ "message": "Product does not exist." }`.
 
 ### Update product
 
@@ -649,7 +716,7 @@ Timestamps and `__v` are excluded from the product projection.
 
 #### Form fields
 
-All product fields are optional for the update request. Common fields are `name`, `category`, `variants`, `preparationTime`, `description`, and `isAvailable`. `isAvailable` must be sent as `"true"` or `"false"` in multipart form data.
+Common fields are `name`, `category`, `variants`, `preparationTime`, `description`, and `isAvailable`. `isAvailable` must be sent as `"true"` or `"false"` in multipart form data. Although the request is intended to be partial, omitting numeric fields may still produce a validation error because the controller converts missing values to `NaN`. `variants` is not JSON-decoded by the update controller, so a multipart JSON string is not reliably supported.
 
 #### File
 
@@ -670,7 +737,7 @@ All product fields are optional for the update request. Common fields are `name`
 
 - `401` — missing or invalid JWT.
 - `403` — wrong role or product does not belong to the authenticated restaurant.
-- `404` — product not found during ownership authorization.
+- `404` — restaurant or product not found during ownership authorization.
 - `500` — upload, validation, Cloudinary, or database error.
 
 ### Delete product
@@ -689,8 +756,8 @@ All product fields are optional for the update request. Common fields are `name`
 
 - `401` — missing or invalid JWT.
 - `403` — wrong role or product ownership failure.
-- `404` — product not found during authorization.
-- `500` — product does not exist or database error.
+- `404` — product does not exist or was not found during authorization.
+- `500` — unexpected database error.
 
 ## Customer endpoints
 
@@ -733,7 +800,9 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 #### Errors
 
 - `400` — `customer data is required` when the body is absent.
-- `500` — duplicate phone, validation, or database error.
+- `409` — customer already exists.
+- `400` — validation error.
+- `500` — unexpected database error.
 
 ### Get customer profile
 
@@ -754,7 +823,8 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 
 - `400` — `customer id is required`.
 - `401` — missing or invalid JWT.
-- `500` — customer not found or database error.
+- `404` — customer not found.
+- `500` — unexpected database error.
 
 ### Add saved address
 
@@ -786,7 +856,9 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 - `400` — missing customer ID or location data.
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — duplicate address, validation, customer, or database error.
+- `404` — customer not found.
+- `409` — saved address already exists.
+- `500` — validation or unexpected database error.
 
 ### Save a restaurant
 
@@ -811,7 +883,9 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 - `400` — missing customer or restaurant ID.
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — customer/restaurant not found, duplicate saved restaurant, or database error.
+- `404` — customer or restaurant not found.
+- `409` — restaurant already saved.
+- `500` — unexpected database error.
 
 ### List saved restaurants
 
@@ -828,7 +902,7 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 }
 ```
 
-Populated restaurant fields are currently requested as `name`, `logo`, `coverImage`, and `isOpen`.
+Populated restaurant fields are currently requested as `name`, `logo`, `coverPhoto`, and `isOpen`.
 
 ### Cancel customer order
 
@@ -853,7 +927,9 @@ Only orders with `pending` status are changed. For another current status, the e
 - `400` — missing customer or order ID.
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — customer/order not found or order already cancelled.
+- `404` — customer or order not found.
+- `409` — order is already cancelled.
+- `500` — unexpected database error.
 
 ## Cart endpoints
 
@@ -884,7 +960,8 @@ The raw cart document is returned:
 
 - `400` — customer ID missing from the JWT.
 - `401` — missing or invalid JWT.
-- `500` — cart already exists or database error.
+- `409` — `{ "message": "Cart already exists for this customer" }`.
+- `500` — unexpected database error.
 
 ### Get cart
 
@@ -900,7 +977,8 @@ Returns the raw cart document for the JWT subject.
 
 - `400` — customer ID missing from the JWT.
 - `401` — missing or invalid JWT.
-- `500` — cart does not exist or database error.
+- `404` — `{ "message": "Cart does not exist for this customer" }`.
+- `500` — unexpected database error.
 
 ### Add cart item
 
@@ -935,7 +1013,9 @@ Returns the raw cart document for the JWT subject.
 - `400` — `{ "message": "Product ID, quantity, and variant are required" }`
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — cart missing, item already exists, invalid item, or database error.
+- `404` — cart does not exist for this customer.
+- `409` — `{ "message": "Item already exists in cart" }`.
+- `500` — invalid item or unexpected database error.
 
 ### Delete cart item
 
@@ -960,7 +1040,8 @@ Returns the raw cart document for the JWT subject.
 - `400` — product ID is required.
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — cart or item does not exist.
+- `404` — cart or item does not exist.
+- `500` — unexpected database error.
 
 ### Clear cart
 
@@ -978,7 +1059,8 @@ Returns the raw cart document for the JWT subject.
 
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — cart does not exist or database error.
+- `404` — cart does not exist for this customer.
+- `500` — unexpected database error.
 
 ## Order endpoints
 
@@ -1006,14 +1088,14 @@ Base path: `/api/v1/orders`
 }
 ```
 
-| Field                                  | Type                   |           Required            |
-| -------------------------------------- | ---------------------- | :---------------------------: |
-| `customerId`                           | string                 |              Yes              |
-| `restaurantId`                         | string                 |              Yes              |
-| `deliveryDetails.type`                 | `delivery` or `pickup` |              Yes              |
-| `deliveryDetails.location`             | object                 | Yes in the current validator  |
-| `deliveryDetails.location.city`        | string                 |              No               |
-| `deliveryDetails.location.coordinates` | GeoJSON Point          | Yes when location is supplied |
+| Field                                  | Type                   |           Required           |
+| -------------------------------------- | ---------------------- | :--------------------------: |
+| `customerId`                           | string                 |             Yes              |
+| `restaurantId`                         | string                 |             Yes              |
+| `deliveryDetails.type`                 | `delivery` or `pickup` |             Yes              |
+| `deliveryDetails.location`             | object                 | Yes in the current validator |
+| `deliveryDetails.location.city`        | string                 |              No              |
+| `deliveryDetails.location.coordinates` | GeoJSON Point          |             Yes              |
 
 The server reads the customer's cart, calculates the subtotal, applies a delivery fee of `200` for delivery and `0` for pickup, creates a pending order, and clears the cart in a transaction.
 
@@ -1021,29 +1103,20 @@ The server reads the customer's cart, calculates the subtotal, applies a deliver
 
 ```json
 {
-  "message": "Order created successfully",
-  "order": {
-    "orderNumber": "JIBLI-ORD-A1B2C3",
-    "customerId": "665f1c9d2c8e4d0012345681",
-    "restaurantId": "665f1c9d2c8e4d0012345678",
-    "items": [],
-    "subtotal": 7,
-    "totalPrice": 207,
-    "status": "pending",
-    "deliveryDetails": {
-      "fee": 200,
-      "type": "delivery"
-    }
-  }
+  "message": "Order created successfully"
 }
 ```
+
+The current transaction flow does not return the created order to the controller, so the practical response is message-only even though the order is created.
 
 #### Errors
 
 - `400` — `{ "message": "Order data is required" }` when the body is absent.
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — restaurant not found/not open, validation, missing cart, empty cart, transaction, or database error.
+- `400` — invalid order data or empty cart.
+- `404` — restaurant not found/not open or cart not found.
+- `500` — transaction or unexpected database error.
 
 ### Get order by ID
 
@@ -1071,7 +1144,8 @@ The repository scopes the query to both `orderId` and the authenticated customer
 - `400` — order ID or customer ID is missing.
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `500` — order not found or database error.
+- `404` — order not found.
+- `500` — unexpected database error.
 
 ### List customer orders
 
@@ -1114,7 +1188,7 @@ The controllers explicitly use these statuses:
 |  `400` | Missing or immediately invalid request data.                                                            |
 |  `401` | Missing authentication or authentication failure.                                                       |
 |  `403` | Authenticated user lacks the required role or ownership.                                                |
-|  `404` | Resource not found in ownership middleware.                                                             |
+|  `404` | Requested resource does not exist or is not available to the authenticated owner.                       |
 |  `429` | OTP rate limit exceeded.                                                                                |
 |  `500` | Service, provider, validation, MongoDB, or uncaught application error under the current implementation. |
 
@@ -1136,11 +1210,11 @@ These points are important for consumers and maintainers of the current API:
 1. **OTP resend behavior:** creating a new OTP deletes existing OTP records for the phone number. OTPs are bcrypt-hashed in the database and are sent only through the SMS provider.
 2. **OTP reuse:** verification marks an OTP as checked, but the repository currently does not reject an already checked OTP. Treat OTPs as intended to be single-use and plan to fix this server-side.
 3. **OTP attempts:** failed attempts are tracked and an OTP is deleted after the attempt threshold is reached. Concurrent verification is not currently atomic.
-4. **Role `rider`:** accepted by OTP validation but not implemented by the service.
+4. **Role `rider`:** not supported by OTP verification; the service returns `400 Unsupported role`.
 5. **Customer ownership on order creation:** the current order flow accepts `customerId` from the request body; clients should send the authenticated customer's ID. The server should ideally derive this value from the JWT.
 6. **Cart role checks:** cart creation and retrieval require a JWT but currently do not require the customer role.
 7. **Product ownership on creation:** the product creation request includes `restaurantId`; clients should send the authenticated restaurant's ID.
-8. **Product update variants:** product creation expects JSON-encoded `variants` in multipart data. Update handling does not currently parse `variants` in the same way.
+8. **Product update variants:** product creation expects JSON-encoded `variants` in multipart data. Update handling does not currently parse `variants` in the same way and may reject a JSON string.
 9. **Search input:** restaurant name search is case-insensitive. Clients should URL-encode the query value.
 10. **No pagination:** list endpoints currently return all matching records.
 11. **Global error middleware:** `ApiError` responses are normalized to `{ status: "error", message }`. Mongoose validation, cast, duplicate-key, and JWT errors are also mapped to safe HTTP responses.

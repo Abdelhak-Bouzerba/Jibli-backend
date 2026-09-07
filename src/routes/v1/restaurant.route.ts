@@ -6,8 +6,8 @@ import {
   manageRestaurantStatus,
   updateRestaurantSettings,
   restaurantLogin,
-  getAllRestaurants,
-  getSingleRestaurant,
+  getNearbyRestaurants,
+  getRestaurantProfile,
   searchRestaurantByName,
   manageOrderStatus,
 } from "../../controllers/restaurant.controller";
@@ -27,7 +27,7 @@ v1router.post("/login", asyncHandler(restaurantLogin));
 //@desc Create new Restaurant
 //@route POST /api/v1/restaurant/create
 //access Public
-v1router.post("/create", asyncHandler(createRestaurant));
+v1router.post("/create",upload.fields([{ name: "logo", maxCount: 1 }, { name: "coverPhoto", maxCount: 1 }]), asyncHandler(createRestaurant));
 
 
 //@desc Get product by category
@@ -48,10 +48,10 @@ v1router.put("/:restaurantId/status", validateJWT, requireRole("restaurant"),aut
 v1router.put("/:restaurantId/settings", validateJWT, requireRole("restaurant"), authorizeRestaurant, upload.fields([{ name: "logo", maxCount: 1 }, { name: "coverPhoto", maxCount: 1 }]), asyncHandler(updateRestaurantSettings));
 
 
-//@desc Get all restaurants
-//@route GET /api/v1/restaurant/all
+//@desc Get nearby restaurants
+//@route GET /api/v1/restaurant/nearby
 //access Public
-v1router.get("/all", asyncHandler(getAllRestaurants));
+v1router.get("/nearby", asyncHandler(getNearbyRestaurants));
 
 
 //@desc Search restaurant by name
@@ -60,10 +60,11 @@ v1router.get("/all", asyncHandler(getAllRestaurants));
 v1router.get("/search", asyncHandler(searchRestaurantByName));
 
 
-//@desc Get single restaurant
-//@route GET /api/v1/restaurant/:restaurantId
+
+//@desc Get restaurant Profile
+//@route GET /api/v1/restaurant/profile
 //access Public
-v1router.get("/:restaurantId", asyncHandler(getSingleRestaurant));
+v1router.get("/profile", asyncHandler(getRestaurantProfile));
 
 
 //@desc Manage order status

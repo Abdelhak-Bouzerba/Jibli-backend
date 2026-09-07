@@ -3,6 +3,7 @@ import Restaurant from "../models/restaurant";
 import Product from "../models/product";
 import Order from "../models/order";
 import { ApiError } from "../utils/apiError";
+import { ILocation } from "../types/index";
 
 //Login restaurant
 const restaurantLogin = async (phone: string) => {
@@ -22,19 +23,25 @@ const checkRestaurantExists = async (restaurantPhone: string) => {
   return rs;
 };
 
-//Get all restaurants
-const getAllRestaurants = async () => {
-  const restaurants = await Restaurant.find()
-    .select("-phone -ratingCount -createdAt -updatedAt -role")
-    .lean();
+//Get nearby restaurants
+const getNearbyRestaurants = async (location: ILocation) => {
+  const restaurants = await Restaurant.find({
+    "location.coordinates": {
+      $near: {
+        $geometry: {
+          type: "Point",
+          coordinates: [location.coordinates.coordinates[0], location.coordinates.coordinates[1]],
+        },
+        $maxDistance: 5000, // 5 kilometers
+      },
+    },
+  }).lean();
   return restaurants;
 };
 
 //Get restaurant by Id
 const getRestaurantById = async (restaurantId: string) => {
-  const rs = await Restaurant.findById(restaurantId)
-    .select("-phone -ratingCount -createdAt -updatedAt -role")
-    .lean();
+  const rs = await Restaurant.findById(restaurantId).lean();
   return rs;
 };
 
@@ -131,7 +138,7 @@ export default {
   manageRestaurantStatus,
   updateRestaurantSettings,
   restaurantLogin,
-  getAllRestaurants,
+  getNearbyRestaurants,
   searchRestaurantByName,
   checkOrderBelongsToRestaurant,
   manageOrderStatus,
