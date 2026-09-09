@@ -1,4 +1,5 @@
 import restaurantRepository from "../repositories/restaurant";
+import orderRepository from "../repositories/order";
 import { IRestaurant, Status } from "../types";
 import { createRestaurantSchema } from "../validators/restaurant.validator";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
@@ -28,24 +29,25 @@ const restaurantLogin = async (phone: string) => {
 };
 
 //Create new Restaurant service
-const createRestaurant = async (restaurantData: IRestaurant,logo?: Express.Multer.File,coverPhoto?: Express.Multer.File) => {
-  //Check if restaurant already exists
-  const existingRestaurant = await restaurantRepository.checkRestaurantExists(
-    restaurantData.phone,
-  );
-  if (existingRestaurant) {
-    throw new ApiError(409, "Restaurant already exists");
-  }
-
+const createRestaurant = async (restaurantData: Record<string, unknown>,logo?: Express.Multer.File,coverPhoto?: Express.Multer.File) => {
   //validate restaurant data through zod schema
   const parseResult = createRestaurantSchema.safeParse(restaurantData);
   if (!parseResult.success) {
     throw new ApiError(400, `Validation error: ${parseResult.error.message}`);
   }
 
+  //Check if restaurant already exists
+  const existingRestaurant = await restaurantRepository.checkRestaurantExists(
+    parseResult.data.phone,
+  );
+  if (existingRestaurant) {
+    throw new ApiError(409, "Restaurant already exists");
+  }
+
   //Create new restaurant
-  const newRestaurant =
-    await restaurantRepository.createNewRestaurant(restaurantData);
+  const newRestaurant = await restaurantRepository.createNewRestaurant(
+    parseResult.data as unknown as IRestaurant,
+  );
 
   // Upload logo to cloudinary and path at databse
   if (newRestaurant && logo) {
@@ -222,6 +224,42 @@ const searchRestaurantByName = async (name: string) => {
   return restaurants;
 };
 
+//Get restaurant order
+const getRestaurantOrders = async (restaurantId: string) => {
+
+  //check if restaurant exists
+  const restaurantExists =
+    await restaurantRepository.checkRestaurantExistsById(restaurantId);
+  if (!restaurantExists) {
+    throw new ApiError(404, "Restaurant does not exist");
+  }
+
+  //Get orders for restaurant
+  const orders = await orderRepository.getOrdersForRes(restaurantId);
+  return orders;
+
+};
+
+//Get restaurant order by id
+const getRestaurantOrderById = async (restaurantId: string, orderId: string) => {
+
+  //check if restaurant exists
+  const restaurantExists =
+    await restaurantRepository.checkRestaurantExistsById(restaurantId);
+  if (!restaurantExists) {
+    throw new ApiError(404, "Restaurant does not exist");
+  }
+
+  //check if order exists
+  const order = await orderRepository.getOrderByIdForRes(restaurantId, orderId);
+  if (!order) {
+    throw new ApiError(404, "Order does not exist");
+  }
+
+  return order;
+
+};
+
 //order management service
 const manageOrderStatus = async (
   orderId: string,
@@ -248,4 +286,6 @@ export default {
   getRestaurantProfile,
   searchRestaurantByName,
   manageOrderStatus,
+  getRestaurantOrderById,
+  getRestaurantOrders,
 };

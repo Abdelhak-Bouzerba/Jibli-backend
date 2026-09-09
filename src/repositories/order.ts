@@ -82,8 +82,22 @@ const getOrders = async (customerId: string) => {
   return orders;
 };
 
+//Get order by id for restaurant
+const getOrderByIdForRes = async (restaurantId: string, orderId: string) => {
+  const order = await Order.findOne({ _id: orderId, restaurantId });
+  return order;
+};
+
+//Get all orders for restaurant
+const getOrdersForRes = async (restaurantId: string) => {
+  const orders = await Order.find({ restaurantId });
+  return orders;
+};
+
 export default {
   createOrder,
   getOrderById,
   getOrders,
+  getOrderByIdForRes,
+  getOrdersForRes,
 };

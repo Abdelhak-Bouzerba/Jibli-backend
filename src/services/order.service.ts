@@ -24,24 +24,6 @@ const createOrder = async (orderData: CreateOrderData) => {
   const newOrder = await orderRepository.createOrder(orderData);
   return newOrder;
 };
-
-//Get order by id service
-const getOrderById = async (customerId: string, orderId: string) => {
-  const order = await orderRepository.getOrderById(customerId, orderId);
-  if (!order) {
-    throw new ApiError(404, "Order not found");
-  }
-  return order;
-};
-
-//Get all orders
-const getOrders = async (customerId: string) => {
-  const orders = await orderRepository.getOrders(customerId);
-  return orders;
-};
-
 export default {
   createOrder,
-  getOrderById,
-  getOrders,
 };

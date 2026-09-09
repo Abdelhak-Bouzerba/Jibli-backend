@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
 import restaurantRepository from "../repositories/restaurant";
 import { ApiError } from "../utils/apiError";
+import { IRestaurant } from "../types";
 
 //Restaurant login controller
 export const restaurantLogin = async (req: Request, res: Response) => {
@@ -31,6 +32,16 @@ export const createRestaurant = async (req: Request, res: Response) => {
     throw new ApiError(400, "Request body is empty");
   }
 
+  const body = req.body as Record<string, unknown>;
+  const nestedPayload = body.restaurant ?? body.restaurantData ?? body.data;
+  const restaurantData = normalizeRestaurantData(
+    nestedPayload && typeof nestedPayload === "object"
+      ? (nestedPayload as Record<string, unknown>)
+      : typeof nestedPayload === "string"
+        ? parseJsonObject(nestedPayload)
+        : body,
+  );
+
   const files = req.files as
     | {
         [fieldname: string]: Express.Multer.File[];
@@ -40,15 +51,12 @@ export const createRestaurant = async (req: Request, res: Response) => {
   const logo = files?.logo?.[0];
   const coverPhoto = files?.coverPhoto?.[0];
 
-  //prepare restaurant data
-  const restaurantData = {
-    ...req.body,
+  //Call service to create new restaurant
+  const { token, newRestaurant } = await restaurantService.createRestaurant(
+    restaurantData,
     logo,
     coverPhoto,
-  };
-
-  //Call service to create new restaurant
-  const { token, newRestaurant } = await restaurantService.createRestaurant(restaurantData , logo , coverPhoto);
+  );
 
   //send response
   res.status(201).send({
@@ -56,6 +64,64 @@ export const createRestaurant = async (req: Request, res: Response) => {
     token,
     message: "Restaurant created successfully",
   });
+};
+
+//for parsing formData into json
+const parseJsonObject = (value: string): Record<string, unknown> => {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+};
+const parseJsonValue = (value: unknown): unknown => {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+const normalizeRestaurantData = (
+  data: Record<string, unknown>,
+): Record<string, unknown> => {
+  const normalized = { ...data };
+
+  for (const field of ["tags", "location", "workingDays"]) {
+    if (field in normalized) {
+      normalized[field] = parseJsonValue(normalized[field]);
+    }
+  }
+
+  for (const field of ["isOpen", "isActive"]) {
+    if (normalized[field] === "true") {
+      normalized[field] = true;
+    } else if (normalized[field] === "false") {
+      normalized[field] = false;
+    }
+  }
+
+  for (const field of ["rating", "ratingCount"]) {
+    if (
+      typeof normalized[field] === "string" &&
+      normalized[field].trim() !== ""
+    ) {
+      normalized[field] = Number(normalized[field]);
+    }
+  }
+
+  return normalized;
 };
 
 //Get products by category controller
@@ -118,9 +184,20 @@ export const updateRestaurantSettings = async (req: Request, res: Response) => {
   const logo = files?.logo?.[0];
   const coverPhoto = files?.coverPhoto?.[0];
 
+  const rawSettings = req.body.settings;
+  const settingsData =
+    rawSettings === undefined
+      ? req.body
+      : typeof rawSettings === "string"
+        ? parseJsonObject(rawSettings)
+        : rawSettings && typeof rawSettings === "object"
+          ? (rawSettings as Record<string, unknown>)
+          : {};
+  const settings = normalizeRestaurantData(settingsData);
+
   const updatedRestaurant = await restaurantService.updateRestaurantSettings(
     restaurantId,
-    req.body,
+    settings as Partial<IRestaurant>,
     logo,
     coverPhoto,
   );
@@ -146,7 +223,7 @@ export const getNearbyRestaurants = async (req: Request, res: Response) => {
   //send response
   res.status(200).json({
     restaurants,
-    message: "Restaurants fetched successfully"
+    message: "Restaurants fetched successfully",
   });
 };
 
@@ -184,6 +261,47 @@ export const searchRestaurantByName = async (req: Request, res: Response) => {
     restaurants,
     message: "Restaurants fetched successfully",
   });
+};
+
+//Get restaurant orders controller
+export const getRestaurantOrders = async (req: Request, res: Response) => {
+  const restaurantId = req.user?.id as string;
+
+  //check if restaurantId is provided
+  if (!restaurantId) {
+    throw new ApiError(400, "restaurantId is required");
+  }
+
+  //Call service to get restaurant orders
+  const orders = await restaurantService.getRestaurantOrders(restaurantId);
+
+  //send response
+  res.status(200).json({
+    orders,
+    message: "Orders fetched successfully",
+  });
+
+};
+
+//Get restaurant order by id controller
+export const getRestaurantOrderById = async (req: Request, res: Response) => {
+  const restaurantId = req.user?.id as string;
+  const orderId = req.params.orderId as string;
+
+  //check if restaurantId and orderId are provided
+  if (!restaurantId || !orderId) {
+    throw new ApiError(400, "restaurantId and orderId are required");
+  }
+
+  //Call service to get restaurant order by id
+  const order = await restaurantService.getRestaurantOrderById(restaurantId, orderId);
+
+  //send response
+  res.status(200).json({
+    order,
+    message: "Order fetched successfully",
+  });
+  
 };
 
 //Order management controller

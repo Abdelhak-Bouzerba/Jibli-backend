@@ -1,5 +1,6 @@
 import customerRepository from "../repositories/customer";
 import restaurantRepository from "../repositories/restaurant";
+import orderRepository from "../repositories/order";
 import { Types } from "mongoose";
 import { ICustomer } from "../types";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
@@ -85,6 +86,26 @@ const addSavedAddress = async (customerId: string, location: any) => {
   return updatedCustomer;
 };
 
+//Remove saved address
+const removeSavedAddress = async (customerId: string, label: string) => {
+
+  //check if customer exists
+  const customer = await customerRepository.getCustomerById(customerId);
+  if (!customer) {
+    throw new ApiError(404, "Customer not found");
+  }
+
+  //check if saved address exists
+  const savedAddressExists = await customerRepository.checkSavedAddressExists(customerId, label);
+  if (!savedAddressExists) {
+    throw new ApiError(404, "Saved address not found");
+  }
+
+  //Remove saved address
+  await customerRepository.removeSavedAddress(customerId, label);
+
+};
+
 //Add saved restaurant
 const addSavedRestaurant = async (customerId: string, restaurantId: string) => {
   //check if customer exists
@@ -114,12 +135,47 @@ const addSavedRestaurant = async (customerId: string, restaurantId: string) => {
   await customerRepository.addSavedRestaurant(customerId, restaurantId);
 };
 
+//Remove saved restaurant
+const removeSavedRestaurant = async (customerId: string, restaurantId: string) => {
+  //check if customer exists
+  const customer = await customerRepository.getCustomerById(customerId);
+  if (!customer) {
+    throw new ApiError(404, "Customer not found");
+  }
+
+  //check if saved restaurant exists
+  const savedRestaurantExists = await customerRepository.checkSavedRestaurantExists(customerId,restaurantId);
+  if (!savedRestaurantExists) {
+    throw new ApiError(404, "Saved restaurant not found");
+  }
+
+  //Remove saved restaurant
+  await customerRepository.removeSavedRestaurant(customerId, restaurantId);
+  
+};
+
 //Get saved restaurants
 const getSavedRestaurants = async (customerId: string) => {
   const savedRestaurants =
     await customerRepository.getSavedRestaurants(customerId);
   return savedRestaurants;
 };
+
+//Get all orders
+const getOrders = async (customerId: string) => {
+  const orders = await orderRepository.getOrders(customerId);
+  return orders;
+};
+
+//Get order by id service
+const getOrderById = async (customerId: string, orderId: string) => {
+  const order = await orderRepository.getOrderById(customerId, orderId);
+  if (!order) {
+    throw new ApiError(404, "Order not found");
+  }
+  return order;
+};
+
 
 //cancel order by customer
 const cancelOrderByCustomer = async (customerId: string, orderId: string) => {
@@ -144,4 +200,8 @@ export default {
   addSavedRestaurant,
   getSavedRestaurants,
   cancelOrderByCustomer,
+  getOrderById,
+  getOrders,
+  removeSavedAddress,
+  removeSavedRestaurant,
 };

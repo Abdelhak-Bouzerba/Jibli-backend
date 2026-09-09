@@ -31,11 +31,26 @@ const addSavedAddress = async (customerId: string, location: any) => {
   return customer;
 };
 
+//remove saved Address
+const removeSavedAddress = async (customerId: string, label: string) => {
+  const customer = await Customer.findById(customerId);
+  if (!customer) {
+    throw new ApiError(404, "Customer not found");
+  }
+  
+  // Remove the savedAddress
+  customer.savedAddresses = customer.savedAddresses?.filter((save) => save.label !== label);
+
+  //save to database
+  await customer.save();
+
+};
+
 //check if saved address exists
-const checkSavedAddressExists = async (customerId: string, location: any) => {
+const checkSavedAddressExists = async (customerId: string, label: string) => {
   const savedAddressExists = await Customer.exists({
     _id: customerId,
-    savedAddresses: { $elemMatch: location },
+    savedAddresses: { $elemMatch: { label } },
   });
 
   return savedAddressExists;
@@ -60,6 +75,21 @@ const checkSavedRestaurantExists = async (
   });
 
   return savedRestaurantExists;
+};
+
+//remove saved restaurant
+const removeSavedRestaurant = async (customerId: string, restaurantId: string) => {
+  const customer = await Customer.findById(customerId);
+  if (!customer) {
+    throw new ApiError(404, "Customer not found");
+  }
+
+  // Remove the restaurantId from the savedRestaurants array
+  customer.savedRestaurants = customer.savedRestaurants?.filter((save) => save.toString() !== restaurantId);
+
+  //save to database
+  await customer.save();
+
 };
 
 //Get saved restaurants
@@ -101,4 +131,6 @@ export default {
   checkSavedRestaurantExists,
   getSavedRestaurants,
   cancelOrderByCustomer,
+  removeSavedAddress,
+  removeSavedRestaurant,
 };

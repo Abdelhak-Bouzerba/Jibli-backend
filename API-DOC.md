@@ -321,6 +321,8 @@ Base path: `/api/v1/restaurant`
 
 #### Form fields
 
+Send the restaurant fields individually as multipart form fields. Nested fields such as `tags`, `location`, and `workingDays` may be JSON-encoded strings. The endpoint also accepts the complete restaurant payload as a JSON-encoded `restaurant`, `restaurantData`, or `data` form field.
+
 ```json
 {
   "name": "Jibli Kitchen",
@@ -349,7 +351,7 @@ Required fields are `name`, `phone`, `tags`, and `location`. Each `workingDays` 
 | `logo`       | image file |     1     |  5 MB |
 | `coverPhoto` | image file |     1     |  5 MB |
 
-Image fields must be uploaded as multipart files, not JSON URL objects. The current create flow may reject supplied image files because its URL-object validation runs before the uploaded files are persisted.
+Image fields must be uploaded as multipart files, not JSON URL objects. Uploaded files are stored in memory, validated separately from the restaurant fields, and then uploaded to Cloudinary.
 
 #### Success response — `201 Created`
 
@@ -454,7 +456,7 @@ The request body must contain a `settings` field. `settings` contains the restau
 }
 ```
 
-When using `multipart/form-data`, send the `settings` value in the form body using the parser-compatible representation for the nested object. Current implementation passes the body value directly to the update service without applying the restaurant creation schema; only supported restaurant fields should be sent.
+When using `multipart/form-data`, send the `settings` value as a JSON-encoded object. Nested fields such as `tags`, `location`, and `workingDays` are parsed before the update is sent to MongoDB. Direct top-level fields remain supported for backward compatibility; only supported restaurant fields should be sent.
 
 #### Files
 
