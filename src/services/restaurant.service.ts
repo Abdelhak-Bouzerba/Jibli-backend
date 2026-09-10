@@ -1,7 +1,7 @@
 import restaurantRepository from "../repositories/restaurant";
 import orderRepository from "../repositories/order";
 import { IRestaurant, Status } from "../types";
-import { createRestaurantSchema } from "../validators/restaurant.validator";
+import { createRestaurantSchema , searchRestaurantSchema } from "../validators/restaurant.validator";
 import { generateJWTtoken } from "../utils/generateJWTtoken";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
 import { ApiError } from "../utils/apiError";
@@ -219,8 +219,16 @@ const getRestaurantProfile = async (restaurantId: string) => {
 };
 
 //Search restaurant by name service
-const searchRestaurantByName = async (name: string) => {
-  const restaurants = await restaurantRepository.searchRestaurantByName(name);
+const searchRestaurantByName = async (name: string, location: ILocation) => {
+
+  //validate inputs
+  const parseResult = searchRestaurantSchema.safeParse({ name, location });
+  if (!parseResult.success) {
+    throw new ApiError(400, `Validation error: ${parseResult.error.message}`);
+  }
+
+  //Call repository to search restaurant by name
+  const restaurants = await restaurantRepository.searchRestaurantByName(name, location);
   return restaurants;
 };
 

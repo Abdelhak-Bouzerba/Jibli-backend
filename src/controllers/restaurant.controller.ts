@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
 import restaurantRepository from "../repositories/restaurant";
 import { ApiError } from "../utils/apiError";
-import { IRestaurant } from "../types";
+import { IRestaurant , ILocation } from "../types";
 
 //Restaurant login controller
 export const restaurantLogin = async (req: Request, res: Response) => {
@@ -227,6 +227,24 @@ export const getNearbyRestaurants = async (req: Request, res: Response) => {
   });
 };
 
+//Get restaurant by id controller
+export const getRestaurantById = async (req: Request, res: Response) => {
+  const restaurantId = req.params.restaurantId as string;
+
+  //check if restaurantId is provided
+  if (!restaurantId) {
+    throw new ApiError(400, "restaurantId is required");
+  }
+
+  //Call service to get single restaurant
+  const restaurant = await restaurantService.getRestaurantProfile(restaurantId);
+
+  //send response
+  res
+    .status(200)
+    .json({ restaurant, message: "Restaurant fetched successfully" });
+};
+
 //Get restaurant Profile controller
 export const getRestaurantProfile = async (req: Request, res: Response) => {
   const restaurantId = req.body.restaurantId as string;
@@ -247,14 +265,15 @@ export const getRestaurantProfile = async (req: Request, res: Response) => {
 //Search restaurant by name controller
 export const searchRestaurantByName = async (req: Request, res: Response) => {
   const name = req.query.name as string;
+  const { location } = req.body;
 
   //check if name is provided
-  if (!name) {
-    throw new ApiError(400, "name is required");
+  if (!name || !location || !location.coordinates) {
+    throw new ApiError(400, "name and location are required");
   }
 
   //Call service to search restaurant by name
-  const restaurants = await restaurantService.searchRestaurantByName(name);
+  const restaurants = await restaurantService.searchRestaurantByName(name , location);
 
   //send response
   res.status(200).json({
@@ -301,7 +320,7 @@ export const getRestaurantOrderById = async (req: Request, res: Response) => {
     order,
     message: "Order fetched successfully",
   });
-  
+
 };
 
 //Order management controller

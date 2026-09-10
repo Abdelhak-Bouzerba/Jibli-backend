@@ -62,3 +62,17 @@ export const createRestaurantSchema = zod.object({
     })
 
 });
+
+//search for restaurant by name schema
+export const searchRestaurantSchema = zod.object({
+    name: zod.string().min(1, "Name is required"),
+    location: zod.object({
+        city: zod.string().min(5, "Address must be at least 5 characters long"),
+        coordinates: zod.object({
+            type: zod.literal("Point"),
+            coordinates: zod.array(zod.number()).max(2).refine((coords) => coords.length === 2, {
+                message: "Coordinates must be an array of two numbers [lng, lat]",
+            }),
+        }),
+    }),
+});

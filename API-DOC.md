@@ -3,7 +3,7 @@
 **API version:** v1  
 **Base URL:** `/api/v1`  
 **Content types:** `application/json` unless an endpoint explicitly requires `multipart/form-data`  
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-09
 
 This document describes the HTTP API currently implemented by the Jibli backend. Response examples show the application-level fields; MongoDB documents may also contain `_id`, `createdAt`, and `updatedAt` fields unless the endpoint applies a projection.
 
@@ -266,13 +266,20 @@ Verifies the SMS code and, for an existing account, returns a JWT.
 }
 ```
 
-Restaurant verification uses the corresponding `isNewRestaurant` field and returns a token for an existing restaurant.
+Restaurant verification uses the corresponding `isNewRestaurant` field:
+
+```json
+{
+  "message": "OTP verified successfully. New restaurant.",
+  "isNewRestaurant": true
+}
+```
+
+For an existing restaurant, the response also includes `isNewRestaurant: false` and a JWT token.
 
 #### Possible responses
 
-- `400 Bad Request` — `{ "message": "Phone, code and role are required." }`
-- `429 Too Many Requests` — verification rate limit exceeded.
-- `400 Bad Request` — validation failure, `OTP not found`, expired or invalid OTP, or `Unsupported role`.
+- `400 Bad Request` — `{ "message": "Phone, code and role are required." }`, validation failure, `OTP not found`, expired or invalid OTP, or `Unsupported role`.
 - `429 Too Many Requests` — verification rate limit or failed-attempt limit exceeded.
 - `500 Internal Server Error` — unexpected database or provider failure.
 
@@ -306,6 +313,8 @@ Base path: `/api/v1/restaurant`
 }
 ```
 
+The `restaurant` value is the complete restaurant document; the example is abbreviated.
+
 #### Errors
 
 - `400` — `{ "message": "Phone number is required" }`
@@ -317,11 +326,11 @@ Base path: `/api/v1/restaurant`
 `POST /api/v1/restaurant/create`
 
 **Access:** Public
-**Content type:** `multipart/form-data`
+**Content type:** `multipart/form-data` (an `application/json` body is also accepted when no files are uploaded)
 
 #### Form fields
 
-Send the restaurant fields individually as multipart form fields. Nested fields such as `tags`, `location`, and `workingDays` may be JSON-encoded strings. The endpoint also accepts the complete restaurant payload as a JSON-encoded `restaurant`, `restaurantData`, or `data` form field.
+Send the restaurant fields individually as multipart form fields. Nested fields such as `tags`, `location`, and `workingDays` may be JSON-encoded strings. The endpoint also accepts the complete restaurant payload as a JSON-encoded `restaurant`, `restaurantData`, or `data` form field. Without uploaded files, an `application/json` request body is also accepted by the current middleware.
 
 ```json
 {
@@ -351,7 +360,7 @@ Required fields are `name`, `phone`, `tags`, and `location`. Each `workingDays` 
 | `logo`       | image file |     1     |  5 MB |
 | `coverPhoto` | image file |     1     |  5 MB |
 
-Image fields must be uploaded as multipart files, not JSON URL objects. Uploaded files are stored in memory, validated separately from the restaurant fields, and then uploaded to Cloudinary.
+Image fields must be uploaded as multipart files, not JSON URL objects. Uploaded files are stored in memory, validated separately from the restaurant fields, and then uploaded to Cloudinary. The response `restaurant` contains the complete created restaurant document; the example is abbreviated.
 
 #### Success response — `201 Created`
 
@@ -396,7 +405,8 @@ Image fields must be uploaded as multipart files, not JSON URL objects. Uploaded
 
 - `400` — `{ "message": "restaurantId and category are required" }`
 - `404` — `{ "message": "Restaurant does not exist" }`.
-- `500` — invalid ID or unexpected database error.
+- `400` — invalid restaurant ID (`Invalid resource identifier`).
+- `500` — unexpected database error.
 
 ### Update restaurant status
 
@@ -423,12 +433,15 @@ Image fields must be uploaded as multipart files, not JSON URL objects. Uploaded
 }
 ```
 
+The `restaurant` value is the complete updated restaurant document; the example is abbreviated.
+
 #### Errors
 
 - `400` — missing `restaurantId` or `status`.
 - `401` — missing or invalid JWT.
 - `403` — token is not a restaurant token or does not own the route resource.
 - `404` — `{ "message": "Restaurant does not exist" }`.
+- `400` — invalid restaurant ID (`Invalid resource identifier`).
 - `500` — unexpected database error.
 
 ### Update restaurant settings
@@ -440,7 +453,7 @@ Image fields must be uploaded as multipart files, not JSON URL objects. Uploaded
 
 #### Form fields
 
-The request body must contain a `settings` field. `settings` contains the restaurant fields to update, including `name`, `description`, `phone`, `email`, `isOpen`, `isActive`, `tags`, and location/working-day fields. In JSON-compatible form, the shape is:
+The request may contain a `settings` field. When present, `settings` contains the restaurant fields to update, including `name`, `description`, `phone`, `email`, `isOpen`, `isActive`, `tags`, and location/working-day fields. Direct top-level fields remain supported for backward compatibility. In JSON-compatible form, the shape is:
 
 ```json
 {
@@ -456,7 +469,7 @@ The request body must contain a `settings` field. `settings` contains the restau
 }
 ```
 
-When using `multipart/form-data`, send the `settings` value as a JSON-encoded object. Nested fields such as `tags`, `location`, and `workingDays` are parsed before the update is sent to MongoDB. Direct top-level fields remain supported for backward compatibility; only supported restaurant fields should be sent.
+When using `multipart/form-data`, send the `settings` value as a JSON-encoded object. Nested fields such as `tags`, `location`, and `workingDays` are parsed before the update is sent to MongoDB. Only supported restaurant fields should be sent. The settings endpoint does not apply the restaurant creation Zod schema.
 
 #### Files
 
@@ -474,13 +487,16 @@ When using `multipart/form-data`, send the `settings` value as a JSON-encoded ob
 }
 ```
 
+The `restaurant` value is the complete updated restaurant document when the update succeeds; the example is abbreviated.
+
 #### Errors
 
 - `400` — `{ "message": "restaurantId is required" }`
 - `401` — missing or invalid JWT.
 - `403` — wrong role or another restaurant's ID.
 - `404` — `{ "message": "Restaurant does not exist" }`.
-- `500` — upload, Cloudinary, validation, or unexpected database error.
+- `400` — invalid restaurant ID or Mongoose validation failure.
+- `500` — upload, Cloudinary, or unexpected database error. Multipart scalar values must be encoded in a form accepted by the parser and Mongoose validators.
 
 ### Get nearby restaurants
 
@@ -505,21 +521,29 @@ The current implementation reads the location from the JSON request body of this
 
 ```json
 {
-  "restaurants": [],
+  "restaurants": [
+    {
+      "all restaurant data model + distance"
+      "distance": 842.5
+    }
+  ],
   "message": "Restaurants fetched successfully"
 }
 ```
+
+Each nearby result includes `distance` in metres from the requested point.
 
 #### Errors
 
 - `400` — `{ "message": "Location is required" }`.
 - `500` — database or geospatial query error.
 
-### Search restaurants
+### Search restaurants by name and location
 
 `GET /api/v1/restaurant/search?name=<name>`
 
 **Access:** Public
+**Content type:** `application/json`
 
 #### Query parameters
 
@@ -527,20 +551,41 @@ The current implementation reads the location from the JSON request body of this
 | ------ | ------ | :------: |
 | `name` | string |   Yes    |
 
+#### Request body
+
+The current implementation also requires a `location` object in the request body and searches within a fixed 5-kilometre radius of that point.
+
+```json
+{
+  "location": {
+    "city": "Amman",
+    "coordinates": { "type": "Point", "coordinates": [35.9106, 31.9539] }
+  }
+}
+```
+
+`location.city` must contain at least five characters and the coordinates must contain exactly two numbers in `[longitude, latitude]` order.
+
 #### Success response — `200 OK`
 
 ```json
 {
-  "restaurants": [],
+  "restaurants": [
+    {
+      "all restaurant model + distance"
+      "distance": 842.5
+    }
+  ],
   "message": "Restaurants fetched successfully"
 }
 ```
 
-The search repository applies a public projection excluding `phone`, `ratingCount`, `createdAt`, `updatedAt`, and `role`.
+The search repository returns geospatial results with a `distance` field and excludes `ratingCount`, `createdAt`, `updatedAt`, and `role`. The current aggregation does not exclude `phone`.
 
 #### Errors
 
-- `400` — `{ "message": "name is required" }`
+- `400` — `{ "message": "name and location are required" }` when the query name or body location is missing.
+- `400` — validation error for an invalid location shape.
 - `500` — database or search error.
 
 ### Get restaurant profile
@@ -559,7 +604,7 @@ The `restaurantId` is supplied in the JSON request body:
 
 ```json
 {
-  "restaurant": { "_id": "665f1c9d2c8e4d0012345678", "name": "Jibli Kitchen" },
+  "restaurant": { "all restaurant data model" },
   "message": "Restaurant fetched successfully"
 }
 ```
@@ -569,7 +614,39 @@ A missing restaurant currently results in `200 OK` with `restaurant: null`. The 
 #### Errors
 
 - `400` — `{ "message": "restaurantId is required" }`.
-- `500` — invalid ID or database error.
+- `400` — invalid MongoDB ID (`Invalid resource identifier`).
+- `500` — database error.
+
+### Get restaurant by ID near a location
+
+`GET /api/v1/restaurant/nearby/:restaurantId`
+
+**Access:** Authenticated JWT
+
+The restaurant ID is supplied as a path parameter. Despite the `/nearby` path segment, the current implementation retrieves the restaurant by ID and does not require a location in the request.
+
+#### Parameters
+
+| Location | Name           | Type   | Required |
+| -------- | -------------- | ------ | :------: |
+| path     | `restaurantId` | string |   Yes    |
+
+#### Success response — `200 OK`
+
+```json
+{
+  "restaurant": { "all restaurant data model" },
+  "message": "Restaurant fetched successfully"
+}
+```
+
+The `restaurant` value is the complete restaurant document; the example is abbreviated. A missing restaurant currently results in `200 OK` with `restaurant: null`.
+
+#### Errors
+
+- `400` — `{ "message": "restaurantId is required" }` or an invalid MongoDB ID (`Invalid resource identifier`).
+- `401` — missing or invalid JWT.
+- `500` — database error.
 
 ### Update restaurant order status
 
@@ -601,6 +678,67 @@ A missing restaurant currently results in `200 OK` with `restaurant: null`. The 
 ```
 
 The authenticated restaurant ID is used to scope the update.
+
+#### Errors
+
+- `400` — `{ "message": "orderId, restaurantId and status are required" }`.
+- `401` — missing or invalid JWT.
+- `403` — token is not a restaurant token.
+- `404` — `{ "message": "Order not found for the restaurant." }`.
+- `400` — invalid order ID (`Invalid resource identifier`) or Mongoose validation failure for an invalid status.
+- `500` — unexpected database error.
+
+### List restaurant orders
+
+`GET /api/v1/restaurant/orders`
+
+**Access:** Restaurant JWT
+
+The restaurant ID is taken from the JWT. Orders are returned as raw order documents.
+
+#### Success response — `200 OK`
+
+```json
+{
+  "orders": [],
+  "message": "Orders fetched successfully"
+}
+```
+
+#### Errors
+
+- `400` — `{ "message": "restaurantId is required" }` when the JWT has no subject.
+- `401` — missing or invalid JWT.
+- `403` — token is not a restaurant token.
+- `404` — `{ "message": "Restaurant does not exist" }`.
+- `500` — unexpected database error.
+
+### Get restaurant order by ID
+
+`GET /api/v1/restaurant/orders/:orderId`
+
+**Access:** Restaurant JWT
+
+The query is scoped to both the authenticated restaurant ID and `orderId`.
+
+#### Success response — `200 OK`
+
+```json
+{
+  "order": {},
+  "message": "Order fetched successfully"
+}
+```
+
+The `order` value is the raw order document and may include customer/restaurant IDs, items, totals, delivery details, status, and timestamps.
+
+#### Errors
+
+- `400` — `{ "message": "restaurantId and orderId are required" }`.
+- `401` — missing or invalid JWT.
+- `403` — token is not a restaurant token.
+- `404` — restaurant or order does not exist.
+- `500` — unexpected database error.
 
 ## Product endpoints
 
@@ -646,9 +784,24 @@ Example `variants` value:
 ```json
 {
   "message": "Product created successfully",
-  "product": { "_id": "665f1c9d2c8e4d0012345679", "name": "Chicken Sandwich" }
+  "product": {
+    "_id": "665f1c9d2c8e4d0012345679",
+    "restaurantId": "665f1c9d2c8e4d0012345678",
+    "name": "Chicken Sandwich",
+    "category": "sandwich",
+    "variants": [{ "size": "regular", "price": 3.5 }],
+    "preparationTime": 15,
+    "image": {
+      "url": "https://cdn.example/product.png",
+      "publicId": "jibli/products/product"
+    },
+    "description": "Grilled chicken sandwich",
+    "isAvailable": true
+  }
 }
 ```
+
+The response contains the complete created product document. The parsed `price` input is not a persisted top-level product field.
 
 #### Errors
 
@@ -657,7 +810,7 @@ Example `variants` value:
 - `403` — token is not a restaurant token.
 - `404` — restaurant does not exist.
 - `409` — product with the same name already exists.
-- `500` — malformed `variants`, Cloudinary, or unexpected database error.
+- `500` — malformed `variants` JSON (currently may surface as an uncaught parse error), Cloudinary, or unexpected database error.
 
 The route requires a restaurant-role JWT, but the current implementation does not verify that the submitted `restaurantId` belongs to the authenticated restaurant.
 
@@ -731,9 +884,22 @@ Common fields are `name`, `category`, `variants`, `preparationTime`, `descriptio
 ```json
 {
   "message": "product has been updated successfully",
-  "product": { "_id": "665f1c9d2c8e4d0012345679" }
+  "product": {
+    "_id": "665f1c9d2c8e4d0012345679",
+    "name": "Chicken Sandwich",
+    "price": 3.5,
+    "category": "sandwich",
+    "preparationTime": 15,
+    "isAvailable": true,
+    "image": {
+      "url": "https://cdn.example/product.png",
+      "publicId": "jibli/products/product"
+    }
+  }
 }
 ```
+
+The returned product projection includes `name`, `price`, `category`, `preparationTime`, `isAvailable`, `image`, and `_id`.
 
 #### Errors
 
@@ -787,7 +953,7 @@ Base path: `/api/v1/customer`
 }
 ```
 
-Required fields are `fullName`, `phone`, and `location`. The role defaults to `customer`; a supplied role must be `customer`.
+Required fields are `fullName`, `phone`, and `location`. The role defaults to `customer`; a supplied role must be `customer`. `fullName` must contain at least 3 characters, `phone` must contain 10–15 characters, `location.city` must contain at least 2 characters, and coordinates must be a valid `[longitude, latitude]` pair within `[-180, 180]` and `[-90, 90]`. Saved addresses use the same coordinate rules and require labels and cities of at least 2 characters.
 
 #### Success response — `200 OK`
 
@@ -798,6 +964,8 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
   "message": "Customer created successfully"
 }
 ```
+
+The response contains the complete created customer document; the example is abbreviated.
 
 #### Errors
 
@@ -820,6 +988,8 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
   "message": "Customer profile fetched successfully"
 }
 ```
+
+The `customer` value is the complete customer document returned by the repository; the example is abbreviated.
 
 #### Errors
 
@@ -853,6 +1023,8 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 }
 ```
 
+The `customer` value is the complete updated customer document; the example is abbreviated.
+
 #### Errors
 
 - `400` — missing customer ID or location data.
@@ -861,6 +1033,8 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 - `404` — customer not found.
 - `409` — saved address already exists.
 - `500` — validation or unexpected database error.
+
+Duplicate-address detection currently passes the full address object to a repository check that expects a label, so duplicate detection may not behave as intended.
 
 ### Save a restaurant
 
@@ -904,7 +1078,59 @@ Required fields are `fullName`, `phone`, and `location`. The role defaults to `c
 }
 ```
 
-Populated restaurant fields are currently requested as `name`, `logo`, `coverPhoto`, and `isOpen`.
+The repository requests `name`, `logo`, `coverImage`, and `isOpen` from the populated restaurant. The restaurant model defines `coverPhoto`, not `coverImage`, so `coverPhoto` is not reliably included in this response.
+
+### Remove saved address
+
+`DELETE /api/v1/customer/saved-address`
+
+**Access:** Customer JWT
+
+#### Request body
+
+```json
+{ "label": "Home" }
+```
+
+The address is removed by its `label`.
+
+#### Success response — `200 OK`
+
+```json
+{ "message": "Saved address removed successfully" }
+```
+
+#### Errors
+
+- `400` — customer ID or `label` is missing.
+- `401` — missing or invalid JWT.
+- `403` — token is not a customer token.
+- `404` — customer or saved address not found.
+
+### Remove saved restaurant
+
+`DELETE /api/v1/customer/saved-restaurant`
+
+**Access:** Customer JWT
+
+#### Request body
+
+```json
+{ "restaurantId": "665f1c9d2c8e4d0012345678" }
+```
+
+#### Success response — `200 OK`
+
+```json
+{ "message": "restaurant removed from saved successfully" }
+```
+
+#### Errors
+
+- `400` — customer ID or restaurant ID is missing.
+- `401` — missing or invalid JWT.
+- `403` — token is not a customer token.
+- `404` — customer or saved restaurant not found.
 
 ### Cancel customer order
 
@@ -1004,6 +1230,8 @@ Returns the raw cart document for the JWT subject.
 | `quantity`  | number |               Yes                |
 | `variant`   | object | Yes; includes `size` and `price` |
 
+The controller only checks that `productId`, `quantity`, and `variant` are truthy. It does not validate the quantity type/range or the variant's `size` and `price` before passing them to the service.
+
 #### Success response — `200 OK`
 
 ```json
@@ -1066,11 +1294,11 @@ Returns the raw cart document for the JWT subject.
 
 ## Order endpoints
 
-Base path: `/api/v1/orders`
+Order creation uses `/api/v1/orders`; customer order reads use `/api/v1/customer/orders`.
 
 ### Create order
 
-`POST /api/v1/orders`
+`POST /api/v1/orders/create`
 
 **Access:** Customer JWT
 
@@ -1120,9 +1348,9 @@ The current transaction flow does not return the created order to the controller
 - `404` — restaurant not found/not open or cart not found.
 - `500` — transaction or unexpected database error.
 
-### Get order by ID
+### Get customer order by ID
 
-`GET /api/v1/orders/:orderId`
+`GET /api/v1/customer/orders/:orderId`
 
 **Access:** Customer JWT
 
@@ -1140,6 +1368,7 @@ The current transaction flow does not return the created order to the controller
 ```
 
 The repository scopes the query to both `orderId` and the authenticated customer ID.
+The `order` value is the raw order document and may include customer/restaurant IDs, items, totals, delivery details, status, and timestamps.
 
 #### Errors
 
@@ -1151,7 +1380,7 @@ The repository scopes the query to both `orderId` and the authenticated customer
 
 ### List customer orders
 
-`GET /api/v1/orders`
+`GET /api/v1/customer/orders`
 
 **Access:** Customer JWT
 
@@ -1164,7 +1393,7 @@ The repository scopes the query to both `orderId` and the authenticated customer
 }
 ```
 
-Orders are filtered by the authenticated customer's ID. Pagination and sorting parameters are not currently implemented.
+Orders are filtered by the authenticated customer's ID and returned as raw order documents. Pagination and sorting parameters are not currently implemented.
 
 #### Errors
 
@@ -1191,7 +1420,9 @@ The controllers explicitly use these statuses:
 |  `401` | Missing authentication or authentication failure.                                                       |
 |  `403` | Authenticated user lacks the required role or ownership.                                                |
 |  `404` | Requested resource does not exist or is not available to the authenticated owner.                       |
+|  `409` | Request conflicts with an existing resource or current resource state.                                  |
 |  `429` | OTP rate limit exceeded.                                                                                |
+|  `503` | SMS provider returned a non-success response.                                                           |
 |  `500` | Service, provider, validation, MongoDB, or uncaught application error under the current implementation. |
 
 Application errors are handled globally by the `ApiError` middleware and use this shape:
@@ -1203,7 +1434,7 @@ Application errors are handled globally by the `ApiError` middleware and use thi
 }
 ```
 
-Known domain failures now use typed statuses, including `400` for invalid input or OTP failures, `401` for authentication failures, `403` for authorization failures, `404` for missing resources, `409` for conflicts, `429` for rate limits, and `503` when the SMS provider rejects a request. Unexpected errors are sanitized as `500 Internal Server Error`.
+Known domain failures now use typed statuses, including `400` for invalid input or OTP failures, `401` for authentication failures, `403` for authorization failures, `404` for missing resources, `409` for conflicts, `429` for rate limits, and `503` when the SMS provider returns a non-success response. Unexpected errors are sanitized as `500 Internal Server Error`.
 
 ## Implementation notes
 

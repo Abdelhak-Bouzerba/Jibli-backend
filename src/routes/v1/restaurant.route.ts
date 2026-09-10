@@ -12,6 +12,7 @@ import {
   manageOrderStatus,
   getRestaurantOrders,
   getRestaurantOrderById,
+  getRestaurantById,
 } from "../../controllers/restaurant.controller";
 import { validateJWT } from "../../middlewares/validateJWT";
 import requireRole from "../../middlewares/requireRole";
@@ -56,11 +57,16 @@ v1router.put("/:restaurantId/settings", validateJWT, requireRole("restaurant"), 
 v1router.get("/nearby", asyncHandler(getNearbyRestaurants));
 
 
+//@desc Get restaurant by id
+//@route GET /api/v1/restaurant/nearby/:restaurantId
+//access Public
+v1router.get("/nearby/:restaurantId",validateJWT, asyncHandler(getRestaurantById));
+
+
 //@desc Search restaurant by name
 //@route GET /api/v1/restaurant/search?name=
 //access Public
 v1router.get("/search", asyncHandler(searchRestaurantByName));
-
 
 
 //@desc Get restaurant Profile

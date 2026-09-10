@@ -25,17 +25,20 @@ const checkRestaurantExists = async (restaurantPhone: string) => {
 
 //Get nearby restaurants
 const getNearbyRestaurants = async (location: ILocation) => {
-  const restaurants = await Restaurant.find({
-    "location.coordinates": {
-      $near: {
-        $geometry: {
+  const restaurants = await Restaurant.aggregate([
+    {
+      $geoNear: {
+        near: {
           type: "Point",
           coordinates: [location.coordinates.coordinates[0], location.coordinates.coordinates[1]],
         },
-        $maxDistance: 5000, // 5 kilometers
+        key: "location.coordinates",
+        distanceField: "distance",
+        maxDistance: 5000, 
+        spherical: true,
       },
     },
-  }).lean();
+  ]);
   return restaurants;
 };
 
@@ -88,12 +91,38 @@ const updateRestaurantSettings = async (
 };
 
 //Search for restaurnat by name
-const searchRestaurantByName = async (name: string) => {
-  const restaurants = await Restaurant.find({
-    name: { $regex: new RegExp(name, "i") },
-  })
-    .select("-phone -ratingCount -createdAt -updatedAt -role")
-    .lean();
+const searchRestaurantByName = async (name: string, location: ILocation) => {
+  const restaurants = await Restaurant.aggregate([
+    {
+      $geoNear: {
+        near: {
+          type: "Point",
+          coordinates: [
+            location.coordinates.coordinates[0],
+            location.coordinates.coordinates[1],
+          ],
+        },
+        key: "location.coordinates",
+        distanceField: "distance",
+        maxDistance: 5000,
+        spherical: true,
+        query: {
+          name: {
+            $regex: name,
+            $options: "i",
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        ratingCount: 0,
+        createdAt: 0,
+        updatedAt: 0,
+        role: 0,
+      },
+    },
+  ]);
 
   return restaurants;
 };
