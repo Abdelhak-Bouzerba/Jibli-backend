@@ -12,11 +12,11 @@ export const createOrder = async (req: Request, res: Response) => {
   }
 
   //call create order service
-  const order = await orderService.createOrder(orderData);
+  const newOrder = await orderService.createOrder(orderData);
 
   //return response
   res.status(201).json({
     message: "Order created successfully",
-    order,
+    order: newOrder,
   });
 };

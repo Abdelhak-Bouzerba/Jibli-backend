@@ -16,9 +16,9 @@ v1router.post("/products", validateJWT, requireRole("restaurant"), upload.single
 
 
 //desc Get all product for a restaurant
-// @route GET /api/v1/products
+// @route GET /api/v1/products/:restaurantId
 // @access Public
-v1router.get("/products", asyncHandler(getAllProducts));
+v1router.get("/products/:restaurantId", asyncHandler(getAllProducts));
 
 
 //desc Get single product by ID

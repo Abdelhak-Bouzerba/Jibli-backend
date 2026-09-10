@@ -9,7 +9,7 @@ import { ApiError } from "../utils/apiError";
 const createOrder = async (orderData: CreateOrderData) => {
   const session = await mongoose.startSession();
   try {
-    await session.withTransaction(async () => {
+    const createdOrder = await session.withTransaction(async () => {
       const cart = await Cart.findOne({
         customerId: orderData.customerId,
       }).session(session);
@@ -28,7 +28,7 @@ const createOrder = async (orderData: CreateOrderData) => {
         0,
       );
       const deliveryFee =
-        orderData.deliveryDetails.type === "delivery" ? 200 : 0;
+        orderData.deliveryDetails.type === "delivery" ? 150 : 0;
       const totalPrice = subTotal + deliveryFee;
 
       //generate order number
@@ -45,6 +45,7 @@ const createOrder = async (orderData: CreateOrderData) => {
         subtotal: subTotal,
         totalPrice: totalPrice,
         status: "pending",
+        note: orderData.note || "",
         deliveryDetails: {
           fee: deliveryFee,
           type: orderData.deliveryDetails.type,
@@ -58,6 +59,7 @@ const createOrder = async (orderData: CreateOrderData) => {
 
       //clear cart
       cart.items = [];
+      cart.subTotal = 0;
       cart.totalPrice = 0;
 
       //save the updated cart
@@ -65,18 +67,25 @@ const createOrder = async (orderData: CreateOrderData) => {
 
       return newOrder;
     });
+
+    await createdOrder.populate({
+      path: "items.productId",
+      select: "name image",
+    });
+
+    return createdOrder;
   } finally {
     await session.endSession();
   }
 };
 
-//Get order by id
+//Get order by id for customer
 const getOrderById = async (customerId: string, orderId: string) => {
   const order = await Order.findOne({ _id: orderId, customerId });
   return order;
 };
 
-//Get all orders
+//Get all orders for customer
 const getOrders = async (customerId: string) => {
   const orders = await Order.find({ customerId });
   return orders;

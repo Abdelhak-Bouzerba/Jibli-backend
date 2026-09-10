@@ -3,7 +3,7 @@
 **API version:** v1  
 **Base URL:** `/api/v1`  
 **Content types:** `application/json` unless an endpoint explicitly requires `multipart/form-data`  
-**Last updated:** 2026-09-09
+**Last updated:** 2026-09-10
 
 This document describes the HTTP API currently implemented by the Jibli backend. Response examples show the application-level fields; MongoDB documents may also contain `_id`, `createdAt`, and `updatedAt` fields unless the endpoint applies a projection.
 
@@ -184,6 +184,88 @@ Product categories are `sandwich`, `burger`, `pizza`, `taco`, `dishes`, `dessert
   "totalPrice": 7
 }
 ```
+
+### Cart response
+
+```json
+{
+  "_id": "665f1c9d2c8e4d0012345682",
+  "customerId": "665f1c9d2c8e4d0012345681",
+  "items": [
+    {
+      "productId": {
+        "_id": "665f1c9d2c8e4d0012345679",
+        "name": "Chicken Sandwich",
+        "image": {
+          "url": "https://cdn.example/product.png",
+          "publicId": "jibli/products/product"
+        },
+        "description": "Grilled chicken sandwich"
+      },
+      "quantity": 2,
+      "variant": { "size": "regular", "price": 3.5 },
+      "unitPrice": 3.5,
+      "totalPrice": 7
+    }
+  ],
+  "subTotal": 7,
+  "deliveryFee": 150,
+  "totalPrice": 157,
+  "createdAt": "2026-09-10T12:00:00.000Z",
+  "updatedAt": "2026-09-10T12:00:00.000Z"
+}
+```
+
+The `GET /api/v1/cart` response populates `items[].productId` with only `_id`,
+`name`, `image`, and `description`. `POST /api/v1/cart` returns a newly created
+cart without items; the other cart mutations return only a message.
+
+### Order
+
+```json
+{
+  "_id": "665f1c9d2c8e4d0012345683",
+  "orderNumber": "JIBLI-ORD-A1B2C3",
+  "customerId": "665f1c9d2c8e4d0012345681",
+  "restaurantId": "665f1c9d2c8e4d0012345678",
+  "riderId": null,
+  "items": [
+    {
+      "productId": {
+        "_id": "665f1c9d2c8e4d0012345679",
+        "name": "Chicken Sandwich",
+        "image": {
+          "url": "https://cdn.example/product.png",
+          "publicId": "jibli/products/product"
+        }
+      },
+      "variant": { "size": "regular", "price": 3.5 },
+      "quantity": 2,
+      "unitPrice": 3.5,
+      "totalPrice": 7
+    }
+  ],
+  "subtotal": 7,
+  "totalPrice": 157,
+  "preparationTime": 0,
+  "status": "pending",
+  "note": "",
+  "deliveryDetails": {
+    "fee": 150,
+    "type": "delivery",
+    "location": {
+      "city": "Amman",
+      "coordinates": { "type": "Point", "coordinates": [35.9106, 31.9539] }
+    }
+  },
+  "createdAt": "2026-09-10T12:00:00.000Z",
+  "updatedAt": "2026-09-10T12:00:00.000Z"
+}
+```
+
+Created orders populate `items[].productId` with `_id`, `name`, and `image`.
+The order stores a snapshot of the cart item prices; changing a product later
+does not recalculate an existing order.
 
 ### Order status
 
@@ -744,6 +826,12 @@ The `order` value is the raw order document and may include customer/restaurant 
 
 Products are mounted directly under `/api/v1`; there is no `/api/v1/product` prefix.
 
+> **Important route behavior:** both the list and single-product handlers are
+> currently registered as `GET /api/v1/products/:id`. The list handler is
+> registered first, so a request to `/api/v1/products/:id` is handled as a
+> restaurant product-list request. The single-product handler is not reachable
+> through HTTP until the routes are changed to use distinct patterns.
+
 ### Create product
 
 `POST /api/v1/products`
@@ -814,26 +902,47 @@ The response contains the complete created product document. The parsed `price` 
 
 The route requires a restaurant-role JWT, but the current implementation does not verify that the submitted `restaurantId` belongs to the authenticated restaurant.
 
-### List products
+### List products for a restaurant
 
-`GET /api/v1/products`
+`GET /api/v1/products/:restaurantId`
 
 **Access:** Public
+
+#### Path parameters
+
+| Name           | Type   | Required | Description                    |
+| -------------- | ------ | :------: | ------------------------------ |
+| `restaurantId` | string |   Yes    | Restaurant MongoDB identifier. |
 
 #### Success response — `200 OK`
 
 ```json
 {
   "message": "Products retrieved successfully",
-  "products": []
+  "products": [
+    {
+      "_id": "665f1c9d2c8e4d0012345679",
+      "name": "Chicken Sandwich",
+      "category": "sandwich",
+      "variants": [{ "size": "regular", "price": 3.5 }],
+      "preparationTime": 15,
+      "image": {
+        "url": "https://cdn.example/product.png",
+        "publicId": "jibli/products/product"
+      },
+      "description": "Grilled chicken sandwich",
+      "isAvailable": true
+    }
+  ]
 }
 ```
 
-Timestamps and `__v` are excluded from the product projection.
+The repository filters by the path `restaurantId` and excludes `restaurantId`,
+`createdAt`, `updatedAt`, and `__v` from each product.
 
 ### Get product by ID
 
-`GET /api/v1/products/:productId`
+`GET /api/v1/products/:productId` _(currently shadowed by the list route; see note above)_
 
 **Access:** Public
 
@@ -854,7 +963,10 @@ Timestamps and `__v` are excluded from the product projection.
 }
 ```
 
-The current repository projection returns `name`, `price`, `category`, `preparationTime`, `isAvailable`, `image`, and `restaurantId` (plus `_id`); `variants` and `description` are not included.
+If called directly in code, the repository projection returns `name`, `price`,
+`category`, `preparationTime`, `isAvailable`, `image`, and `restaurantId` (plus
+`_id`); `variants` and `description` are not included. Over HTTP, this path is
+currently handled by the list-products endpoint and returns its response shape.
 
 #### Errors
 
@@ -899,7 +1011,8 @@ Common fields are `name`, `category`, `variants`, `preparationTime`, `descriptio
 }
 ```
 
-The returned product projection includes `name`, `price`, `category`, `preparationTime`, `isAvailable`, `image`, and `_id`.
+The returned product projection includes `name`, `price`, `category`,
+`preparationTime`, `isAvailable`, `image`, and `_id`.
 
 #### Errors
 
@@ -1073,12 +1186,25 @@ Duplicate-address detection currently passes the full address object to a reposi
 
 ```json
 {
-  "savedRestaurants": [],
+  "savedRestaurants": [
+    {
+      "_id": "665f1c9d2c8e4d0012345678",
+      "name": "Jibli Kitchen",
+      "logo": {
+        "url": "https://cdn.example/logo.png",
+        "publicId": "jibli/logo"
+      },
+      "isOpen": true
+    }
+  ],
   "message": "Saved restaurants fetched successfully"
 }
 ```
 
-The repository requests `name`, `logo`, `coverImage`, and `isOpen` from the populated restaurant. The restaurant model defines `coverPhoto`, not `coverImage`, so `coverPhoto` is not reliably included in this response.
+The populated restaurant projection requests `name`, `logo`, `coverImage`, and
+`isOpen`. The model defines `coverPhoto` rather than `coverImage`, so the
+returned saved-restaurant objects currently contain `name`, `logo`, and
+`isOpen`; `coverPhoto` is not returned by this endpoint.
 
 ### Remove saved address
 
@@ -1173,13 +1299,16 @@ The customer ID is taken from the JWT; no request body is required.
 
 #### Success response — `201 Created`
 
-The raw cart document is returned:
+The raw cart document is returned. New carts use an empty `items` array,
+`subTotal: 0`, `deliveryFee: 150`, and `totalPrice: 0`:
 
 ```json
 {
   "_id": "665f1c9d2c8e4d0012345682",
   "customerId": "665f1c9d2c8e4d0012345681",
   "items": [],
+  "subTotal": 0,
+  "deliveryFee": 150,
   "totalPrice": 0
 }
 ```
@@ -1199,7 +1328,9 @@ The raw cart document is returned:
 
 #### Success response — `200 OK`
 
-Returns the raw cart document for the JWT subject.
+Returns the cart for the JWT subject. The response populates each
+`items[].productId` with the product `_id`, `name`, `image`, and `description`.
+See [Cart response](#cart-response) for the complete shape.
 
 #### Errors
 
@@ -1327,24 +1458,72 @@ Order creation uses `/api/v1/orders`; customer order reads use `/api/v1/customer
 | `deliveryDetails.location.city`        | string                 |              No              |
 | `deliveryDetails.location.coordinates` | GeoJSON Point          |             Yes              |
 
-The server reads the customer's cart, calculates the subtotal, applies a delivery fee of `200` for delivery and `0` for pickup, creates a pending order, and clears the cart in a transaction.
+`note` is optional and is not part of the current create-order validator. The
+server uses the existing cart items, so items, prices, subtotal, and total are
+not accepted from this request body. The `customerId` is currently read from
+the body rather than derived from the JWT; it should match the authenticated
+customer.
+
+The server reads the customer's cart, calculates the subtotal, applies a
+delivery fee of `150` for delivery and `0` for pickup, creates a pending order,
+populates each item's product `name` and `image`, and clears the cart in a
+transaction.
 
 #### Success response — `201 Created`
 
 ```json
 {
-  "message": "Order created successfully"
+  "message": "Order created successfully",
+  "order": {
+    "_id": "665f1c9d2c8e4d0012345683",
+    "orderNumber": "JIBLI-ORD-A1B2C3",
+    "customerId": "665f1c9d2c8e4d0012345681",
+    "restaurantId": "665f1c9d2c8e4d0012345678",
+    "riderId": null,
+    "items": [
+      {
+        "productId": {
+          "_id": "665f1c9d2c8e4d0012345679",
+          "name": "Chicken Sandwich",
+          "image": {
+            "url": "https://cdn.example/product.png",
+            "publicId": "jibli/products/product"
+          }
+        },
+        "variant": { "size": "regular", "price": 3.5 },
+        "quantity": 2,
+        "unitPrice": 3.5,
+        "totalPrice": 7
+      }
+    ],
+    "subtotal": 7,
+    "totalPrice": 157,
+    "preparationTime": 0,
+    "status": "pending",
+    "note": "",
+    "deliveryDetails": {
+      "fee": 150,
+      "type": "delivery",
+      "location": {
+        "city": "Amman",
+        "coordinates": { "type": "Point", "coordinates": [35.9106, 31.9539] }
+      }
+    },
+    "createdAt": "2026-09-10T12:00:00.000Z",
+    "updatedAt": "2026-09-10T12:00:00.000Z"
+  }
 }
 ```
 
-The current transaction flow does not return the created order to the controller, so the practical response is message-only even though the order is created.
+`order.items[].productId` is populated with the product `_id`, `name`, and
+`image` fields in this response.
 
 #### Errors
 
 - `400` — `{ "message": "Order data is required" }` when the body is absent.
 - `401` — missing or invalid JWT.
 - `403` — token is not a customer token.
-- `400` — invalid order data or empty cart.
+- `400` — invalid order data, empty cart, or missing order data.
 - `404` — restaurant not found/not open or cart not found.
 - `500` — transaction or unexpected database error.
 
@@ -1448,7 +1627,8 @@ These points are important for consumers and maintainers of the current API:
 6. **Cart role checks:** cart creation and retrieval require a JWT but currently do not require the customer role.
 7. **Product ownership on creation:** the product creation request includes `restaurantId`; clients should send the authenticated restaurant's ID.
 8. **Product update variants:** product creation expects JSON-encoded `variants` in multipart data. Update handling does not currently parse `variants` in the same way and may reject a JSON string.
-9. **Search input:** restaurant name search is case-insensitive. Clients should URL-encode the query value.
-10. **No pagination:** list endpoints currently return all matching records.
-11. **Global error middleware:** `ApiError` responses are normalized to `{ status: "error", message }`. Mongoose validation, cast, duplicate-key, and JWT errors are also mapped to safe HTTP responses.
-12. **No OpenAPI document is currently generated:** this Markdown file is the human-readable contract; it should be updated whenever routes, validators, or response shapes change.
+9. **Product route collision:** `GET /api/v1/products/:restaurantId` is registered before `GET /api/v1/products/:productId`, so the list handler currently receives every one-segment GET request under `/products`.
+10. **Search input:** restaurant name search is case-insensitive. Clients should URL-encode the query value.
+11. **No pagination:** list endpoints currently return all matching records.
+12. **Global error middleware:** `ApiError` responses are normalized to `{ status: "error", message }`. Mongoose validation, cast, duplicate-key, and JWT errors are also mapped to safe HTTP responses.
+13. **No OpenAPI document is currently generated:** this Markdown file is the human-readable contract; it should be updated whenever routes, validators, or response shapes change.

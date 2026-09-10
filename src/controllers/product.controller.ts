@@ -56,8 +56,9 @@ export const createProduct = async (req: Request, res: Response) => {
 
 //Get All products controller
 export const getAllProducts = async (req: Request, res: Response) => {
+  const restaurantId = req.params.restaurantId as string;
   //Call the service to get all products
-  const products = await productService.getAllProducts();
+  const products = await productService.getAllProducts(restaurantId);
 
   //Send response
   res.status(200).json({

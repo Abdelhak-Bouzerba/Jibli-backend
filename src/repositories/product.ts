@@ -18,9 +18,9 @@ const createProduct = async (productData: IProduct) => {
 };
 
 //Get all products
-const getAllProducts = async () => {
+const getAllProducts = async (restaurantId: string) => {
       const products = await Product
-          .find()
+          .find({restaurantId})
           .select("-createdAt -updatedAt -__v")
           .lean();
     return products;

@@ -20,6 +20,7 @@ export const orderSchema = zod.object({
     subtotal: zod.number().min(0, "Subtotal must be a positive number"),
     totalPrice: zod.number().min(0, "Total price must be a positive number"),
     status: zod.enum(["pending", "accepted", "preparing", "ready-to-pickup", "out-for-delivery", "at-door", "delivered", "cancelled"]),
+    note: zod.string().optional(),
     deliveryDetails: zod.object({
         fee: zod.number().min(0, "Delivery fee must be a positive number"),
         type: zod.enum(["delivery", "pickup"]),

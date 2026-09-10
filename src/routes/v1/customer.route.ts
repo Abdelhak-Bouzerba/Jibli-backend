@@ -60,13 +60,13 @@ v1router.get("/saved-restaurant", validateJWT, requireRole("customer"), asyncHan
 
 
 //@desc Get all orders
-//@route GET /api/v1/customer/me/orders
+//@route GET /api/v1/customer/orders
 //@access Private
 v1router.get("/orders", validateJWT, requireRole("customer"), asyncHandler(getOrders));
 
 
 //@desc Get order by id
-//@route GET /api/v1/customer/me/orders/:orderId
+//@route GET /api/v1/customer/orders/:orderId
 //@access Private
 v1router.get("/orders/:orderId", validateJWT, requireRole("customer"), asyncHandler(getOrderById));
 

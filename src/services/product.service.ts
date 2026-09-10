@@ -37,9 +37,9 @@ const createProduct = async (productData: IProduct) => {
 };
 
 //Get all products service
-const getAllProducts = async () => {
+const getAllProducts = async (restaurantId: string) => {
   //Get all products
-  const products = await productRepository.getAllProducts();
+  const products = await productRepository.getAllProducts(restaurantId);
   return products;
 };
 

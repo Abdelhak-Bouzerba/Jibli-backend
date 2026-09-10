@@ -14,7 +14,9 @@ const itemSchema = new mongoose.Schema({
 
 const cartSchema = new mongoose.Schema<ICart>({
     customerId: { type: Types.ObjectId, ref: "Customer", required: true },
-    items: [itemSchema , { type: [itemSchema], required: false, default: [] }],
+    items: [itemSchema, { type: [itemSchema], required: false, default: [] }],
+    subTotal: { type: Number, required: true, default: 0 },
+    deliveryFee: { type: Number, required: true, default: 150 },
     totalPrice: { type: Number, required: true, default: 0 },
 },
     { timestamps: true }

@@ -15,7 +15,9 @@ const checkCartExists = async (customerId: string) => {
 
 //Get cart
 const getCart = async (customerId: string) => {
-  const cart = await Cart.findOne({ customerId });
+  const cart = await Cart
+    .findOne({ customerId })
+    .populate("items.productId", 'name image description');
   if (!cart) {
     throw new ApiError(404, "Cart does not exist for this customer");
   }
@@ -23,12 +25,7 @@ const getCart = async (customerId: string) => {
 };
 
 //Add item to cart
-const addToCart = async (
-  customerId: string,
-  productId: string,
-  quantity: number,
-  variant: any,
-) => {
+const addToCart = async (customerId: string,productId: string,quantity: number,variant: any) => {
   const cart = await Cart.findOne({ customerId });
   if (!cart) {
     throw new ApiError(404, "Cart does not exist for this customer");
@@ -40,9 +37,14 @@ const addToCart = async (
 
   //add new item to cart
   cart.items.push({ productId, quantity, variant, unitPrice, totalPrice });
-
-  //update totalPrice
-  cart.totalPrice += quantity * variant.price;
+  
+  //set deliveryFee to 150DA
+  if(cart.deliveryFee ===0 ){
+    cart.deliveryFee = 150;
+  }
+  //update subTotal AND totalPrice
+  cart.subTotal += quantity * variant.price;
+  cart.totalPrice += cart.subTotal + cart.deliveryFee;
 
   //save the changes to the cart
   await cart.save();
@@ -94,6 +96,7 @@ const deleteItemFromCart = async (customerId: string, productId: string) => {
 
   //update totalPrice
   cart.totalPrice -= itemPrice;
+  cart.subTotal -= itemPrice;
 
   //save the changes to the cart
   await cart.save();
@@ -108,6 +111,7 @@ const clearCart = async (customerId: string) => {
 
   //delete all items and reset totalPrice
   cart.items = [];
+  cart.subTotal = 0;
   cart.totalPrice = 0;
 
   //save the changes to the cart

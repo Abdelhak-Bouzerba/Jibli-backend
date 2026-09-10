@@ -118,6 +118,8 @@ interface IItem {
 export interface ICart extends Document {
   customerId: Types.ObjectId; // Reference to the customer
   items: IItem[];
+  subTotal: number; 
+  deliveryFee: number;
   totalPrice: number;
   createdAt: Date;
   updatedAt: Date;
@@ -134,6 +136,7 @@ export interface IOrder extends Document {
   totalPrice: number; // Total price including delivery fee
   preparationTime: number; // Estimated preparation time in minutes
   status: Status;
+  note: string;
   deliveryDetails: {
     fee: number;
     type: "delivery" | "pickup"; 
@@ -152,7 +155,7 @@ export interface IOrder extends Document {
 export interface CreateOrderData {
   customerId: Types.ObjectId;
   restaurantId: Types.ObjectId | string;
-
+  note?: string;
   deliveryDetails: {
     type: "delivery" | "pickup";
     location?: {
@@ -172,4 +175,24 @@ export interface IOtp {
   expiresAt: Date;
   isChecked: boolean;
   attempts: number;
+}
+
+//Define Rider interface schema
+export interface IRider extends Document { 
+  phone: string;
+  fullName: string;
+  email?: string;
+  role: "rider";
+  isOnline: boolean;
+  isAvailable: boolean;
+  activeOrders: number;
+  location?: {
+    city: string;
+    coordinates: {
+      type: "Point";
+      coordinates: [number, number]; // [lng, lat]
+    };
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }

@@ -26,6 +26,7 @@ const orderSchema = new mongoose.Schema<IOrder>({
         enum: ["pending", "accepted", "preparing", "ready-to-pickup", "out-for-delivery", "at-door", "delivered", "cancelled"],
         required: true,
     },
+    note: { type: String, required: false , default: ""},
     deliveryDetails: {
         fee: { type: Number, required: true },
         type: { type: String, enum: ["delivery", "pickup"], required: true },
